@@ -8,6 +8,7 @@ jupyter = "*"
 pm4py = "*"
 scikit-learn = "*"
 pot = "*"
+typing-extensions = "*"
 
 [dev-packages]
 
