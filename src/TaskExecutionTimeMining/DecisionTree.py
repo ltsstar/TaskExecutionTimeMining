@@ -23,7 +23,7 @@ class SplittingCriterion:
         unique_values = self.data[self.x_name].unique()
         best_split_value = None
         best_split = (np.inf, )
-        for unique_value in tqdm(unique_values.sort()):
+        for unique_value in tqdm(sorted(unique_values)):
             left = self.data[self.data[self.x_name] < unique_value]
             right = self.data[self.data[self.x_name] >= unique_value]
             if left.shape[0] < self.min_class_size or right.shape[0] < self.min_class_size:
