@@ -10,24 +10,37 @@ class SplittingCriterion:
         self.data = data
         self.min_class_size = min_class_size
 
+    def _find_best_split(self, left, right, best_split, split_value):
+        left_gmm = AutoGMM(left)
+        right_gmm = AutoGMM(right)
+        wd = GMMsWassersteinDistance(left_gmm, right_gmm).calculate()
+        if wd > best_split[0]:
+            return wd, split_value, left, right, left_gmm, right_gmm
+        else:
+            return best_split
+
     def _get_optimal_split_continous(self):
-        self._get_optimal_split_categorical()
+        unique_values = self.data[self.x_name].unique()
+        best_split_value = None
+        best_split = (np.inf, )
+        for unique_value in tqdm(unique_values.sort()):
+            left = self.data[self.data[self.x_name] < unique_value]
+            right = self.data[self.data[self.x_name] >= unique_value]
+            if left.shape[0] < self.min_class_size or right.shape[0] < self.min_class_size:
+                continue
+            best_split = self._find_best_split(left, right, best_split, unique_value)
+        return best_split
 
     def _get_optimal_split_categorical(self):
         unique_values = self.data[self.x_name].unique()
-        max_wd = 0
-        best_split = None
+        best_split_value = None
+        best_split = (np.inf, )
         for unique_value in tqdm(unique_values):
             left = self.data[self.data[self.x_name] == unique_value]
             right = self.data[self.data[self.x_name] != unique_value]
             if left.shape[0] < self.min_class_size or right.shape[0] < self.min_class_size:
                 continue
-            left_gmm = AutoGMM(left)
-            right_gmm = AutoGMM(right)
-            wd = GMMsWassersteinDistance(left_gmm, right_gmm).calculate()
-            if wd > max_wd:
-                max_wd = wd
-                best_split = wd, unique_value, left, right, left_gmm, right_gmm
+            best_split = self._find_best_split(left, right, best_split, unique_value)
         return best_split
             
     def get_optimal_split(self):
@@ -38,7 +51,7 @@ class SplittingCriterion:
             return self._get_optimal_split_categorical()
 
 class DecisionTree:
-    def __init__(self, min_class_size=10, min_wd_gain=100):
+    def __init__(self, min_class_size=50, min_wd_gain=100):
         self.min_class_size = min_class_size
         self.min_wd_gain = min_wd_gain
 

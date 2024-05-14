@@ -17,9 +17,10 @@ def load_event_log(path):
 
 file_path = '../data/BPI_Challenge_2012.xes'
 start_end_event_log = load_event_log(file_path)
+start_end_event_log['case:AMOUNT_REQ_start'] = pandas.to_numeric(start_end_event_log['case:AMOUNT_REQ_start'])
 
-
-relevant_log = start_end_event_log[['org:resource', 'concept:name', 'case:AMOUNT_REQ_start', 'duration_seconds']]
+#relevant_log = start_end_event_log[['org:resource', 'concept:name', 'case:AMOUNT_REQ_start', 'duration_seconds']][1000:]
+relevant_log = start_end_event_log[['case:AMOUNT_REQ_start', 'duration_seconds']][1000:]
 dt = DecisionTree()
 res = dt.fit(relevant_log)
 print(res)
