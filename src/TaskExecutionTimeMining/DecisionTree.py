@@ -14,7 +14,7 @@ class SplittingCriterion:
         left_gmm = AutoGMM(left)
         right_gmm = AutoGMM(right)
         wd = GMMsWassersteinDistance(left_gmm, right_gmm).calculate()
-        if wd > best_split[0]:
+        if best_split != None and wd > best_split[0]:
             return wd, split_value, left, right, left_gmm, right_gmm
         else:
             return best_split
@@ -22,7 +22,7 @@ class SplittingCriterion:
     def _get_optimal_split_continous(self):
         unique_values = self.data[self.x_name].unique()
         best_split_value = None
-        best_split = (np.inf, )
+        best_split = None
         for unique_value in tqdm(sorted(unique_values)):
             left = self.data[self.data[self.x_name] < unique_value]
             right = self.data[self.data[self.x_name] >= unique_value]
@@ -34,7 +34,7 @@ class SplittingCriterion:
     def _get_optimal_split_categorical(self):
         unique_values = self.data[self.x_name].unique()
         best_split_value = None
-        best_split = (np.inf, )
+        best_split = None
         for unique_value in tqdm(unique_values):
             left = self.data[self.data[self.x_name] == unique_value]
             right = self.data[self.data[self.x_name] != unique_value]
@@ -56,7 +56,7 @@ class DecisionTree:
         self.min_wd_gain = min_wd_gain
 
     def _rec_fit(self, event_log, gmm):
-        best_split = (0, 0, None, None, None, None)
+        best_split = None
         best_col = None
         for col in tqdm(event_log.columns):
             if col == 'duration_seconds':
@@ -67,7 +67,7 @@ class DecisionTree:
                 if best_split[0] < split[0]:
                     best_split = split
                     best_col = col
-        if best_split[0]:
+        if best_split != None:
             print(best_col, best_split[0])
             left_result, right_result = None, None
             if GMMsWassersteinDistance(gmm, best_split[4]).calculate() > self.min_wd_gain:
