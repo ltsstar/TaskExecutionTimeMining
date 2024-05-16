@@ -56,7 +56,7 @@ class DecisionTree:
         self.min_wd_gain = min_wd_gain
 
     def _rec_fit(self, event_log, gmm):
-        best_split = None
+        best_split = (None, )
         best_col = None
         for col in tqdm(event_log.columns):
             if col == 'duration_seconds':
