@@ -14,7 +14,7 @@ class SplittingCriterion:
         left_gmm = AutoGMM(left)
         right_gmm = AutoGMM(right)
         wd = GMMsWassersteinDistance(left_gmm, right_gmm).calculate()
-        if best_split != None and wd > best_split[0]:
+        if best_split == None or wd > best_split[0]:
             return wd, split_value, left, right, left_gmm, right_gmm
         else:
             return best_split

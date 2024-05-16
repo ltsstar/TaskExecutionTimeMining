@@ -88,7 +88,7 @@ class GMM:
 
 class AutoGMM(GMM):
     def __init__(self, start_end_event_log, percentile=False,
-                max_gaussians=100, min_data_per_gaussian=5,
+                max_gaussians=100, min_data_per_gaussian=15,
                 min_relative_improvement=0.1,
                 min_relative_improvement_period=3,
                 max_fitting=5):
