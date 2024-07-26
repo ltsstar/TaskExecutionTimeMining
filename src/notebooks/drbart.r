@@ -1,5 +1,7 @@
 library(cleandata)
 library(devtools)
+library(jsonlite)
+
 load_all('~/Documents/drbart')
 setwd("~/Documents/TaskExecutionTimeMining/src/notebooks")
 
@@ -25,9 +27,9 @@ y <- df_xy[, 'duration_seconds']
 
 
 
-fit <- drbart(y, x, nburn=20, nsim=2, nthin=2,
-              m_mean=4,
-              m_var=4,
+fit <- drbart(y, x, nburn=200, nsim=20, nthin=2,
+              m_mean=50,
+              m_var=50,
               variance='ux',# alpha = 0.5, beta = 0.5,
               mean_cuts=list(
                 seq(
@@ -41,6 +43,8 @@ fit <- drbart(y, x, nburn=20, nsim=2, nthin=2,
                 unique(df_xy$concept.name)
               )
 )
+write_json(fit$fit$ucuts, path = "ucuts.json")
+write_json(fit$fit$phistar, path = "phistar.json")
 
 concept_pred <- factor(c('W_Afhandelen leads', 'W_Afhandelen leads'
                          ),
@@ -50,9 +54,9 @@ resource_pred <- factor(c(10228, 10228),
 
 x_pred <- as.matrix(
   data.matrix(
-    data.frame(case.AMOUNT_REQ_start <- c(400000, 1000),
-               org.resource <- resource_pred,
-               concept.name <- concept_pred
+    data.frame(case.AMOUNT_REQ_start <- c(10000, 300000),
+               org.resource <- c(5, 5),#resource_pred,
+               concept.name <- c(1, 1)#concept_pred
                #concept.name <- concept_pred,
     )
   ),
