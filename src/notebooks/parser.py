@@ -1,10 +1,15 @@
 import collections
 import numpy as np
+import scipy
+import math
+import json
 
 class Parser:
     def __init__(self):
         self.f_dr_bart_mean = open('dr_bart_mean.txt')
         self.f_dr_bart_prec = open('dr_bart_prec.txt')
+        self.ucut_file = open('ucuts.json')
+        self.phistar_file = open('phistar.json')
 
     def parse_variables(self, f):
         number_variables = int(f.readline())
@@ -62,6 +67,12 @@ class Parser:
         tree_variables, trees = self.parse_trees(self.f_dr_bart_prec, variables)
         iterate_trees = [IterateTrees(trees[i:i + tree_variables[0]]) for i in range(0, len(trees), tree_variables[0])]
         return variables, iterate_trees
+    
+    def parse_ucuts(self):
+        return json.load(self.ucut_file)
+
+    def parse_phistar(self):
+        return json.load(self.phistar_file)
 
 class Node:
     def __init__(self, id, variable, cut_point, mu):
@@ -80,8 +91,8 @@ class Tree:
     def get_bottom_node(self, x_row : list[float]):
         current = self.nodes[1]
         previous = None
-        while current.left_child != None:
-            if x_row[current.variable] < current.mu:
+        while current != None:
+            if x_row[current.variable] < current.cut_value:
                 previous = current
                 current = current.left_child
             else:
@@ -96,13 +107,15 @@ class IterateTrees:
     def fit_i(self, x_row : list[float]):
         res = 0
         for tree in self.trees:
-            res += tree.get_bottom_node(x_row).mu
+            bn = tree.get_bottom_node(x_row)
+            res += bn.mu
         return res
 
     def fit_i_mult(self, x_row : list[float]):
         res = 1
         for tree in self.trees:
-            res *= tree.get_bottom_node(x_row)
+            bn = tree.get_bottom_node(x_row)
+            res *= bn.mu
         return res
 
     '''
@@ -111,16 +124,19 @@ class IterateTrees:
     def predict_i(self, desired_x_rows : list[list]):
         res = []
         for x_row in desired_x_rows:
-            res.append(self.fit_i(x_row))
+            r = self.fit_i(x_row)
+            res.append(r)
         return res
 
     '''
     Generate prediction for the ith mcmc iterate
     '''
     def predict_prec_i(self, desired_x_rows : list[list]):
-        res = collections.defaultdict(lambda: 0)
-        for x in desired_x_rows:
-            res[x] += fit_i_mult(x)
+        print('predict_prec_i')
+        res = []
+        for x_row in desired_x_rows:
+            r = self.fit_i_mult(x_row)
+            res.append(r)
         return res
 
 
@@ -129,37 +145,81 @@ class AllTrees:
         self.mean_trees = mean_trees
         self.prec_trees = prec_trees
 
-    def predict(self, des_x : list[float]):
+    def predict(self, des : list[list[float]]):
         res = []
-        for mean_tree in mean_trees:
-            res.append(mean_tree.predict_i(des_x))
+        for des_x, mean_tree in zip(des, mean_trees):
+            p_i = mean_tree.predict_i(des_x)
+            res.append(p_i)
         return res
+    
+    def predict_prec(self, phi_star : list[float], des : list[list[float]]):
+        res = []
+        for des_x, prec_tree in zip(des, prec_trees):
+            p_i = prec_tree.predict_prec_i(des_x)
+            res.append(p_i)
+        weighted_res = []
+        for phi, r in zip(phi_star, res):
+            weighted_res.append(phi * r)
+        return weighted_res
+
+def logsumexp(tmp):
+    m = max(tmp)
+    res = 0
+    for t in tmp:
+        res += np.exp(t - m)
+    return m + np.log(res)
+
+def dmixnorm(ygrid, logprob, sigma, mu):
+    res = []
+    for y in ygrid:
+        tmp = []
+        for m, s, lp in zip(mu, sigma, logprob):
+            r = lp + np.log(scipy.stats.norm.pdf(y, loc=m, scale=s))
+            tmp.append(r)
+        res.append(logsumexp(tmp))
+    return res
+
+def post_fun(ygrid, mus, sigma, logprobs):
+    res = []
+    for mu_i, sigma_i, logprob_i in zip(mus, sigma, logprobs):
+        res.append(dmixnorm(ygrid, logprob_i, sigma_i, mu_i))
+    return res
 
 
-
-def proba(x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]]):
-    logprobs = [np.diff(np.array([0] + ucuts_i + [1])) for ucuts_i in ucuts ]
+def proba(ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
+    logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
     mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
 
+    res = []
     for x_row in x_matrix:
-        phistar = 1
-
         des = [[[m] + x_row for m in mid] for mid in mids]
-        mu = [trees.predict(x) for x in des]
+        mu = trees.predict(des)
 
-        phi = [
-                [phistar[i-1] * predict_prec_i(x) for i in range(1, len(ucuts)+1)]
-            for x in x_matrix
-            ]
-        for ucut in ucuts:
-            phistar
+        phi = trees.predict_prec(phi_star, des)
+        sigma = [[1 / math.sqrt(p) for p in ph] for ph in phi]
+        r = post_fun(ygrid, mu, sigma, logprobs)
+        probas = np.exp(r)
+
+        #mean probs
+        res.append(np.mean(probas, axis=0))
+    return res
 
 if __name__ == '__main__':
     p = Parser()
     mean_cut_variables, mean_trees = p.parse_mean()
     prec_cut_variables, prec_trees = p.parse_prec()
+    phi_star = p.parse_phistar()
+    ucuts = p.parse_ucuts()
     at = AllTrees(mean_trees, prec_trees)
-    ucuts = [[0.0001, 0.0591, 0.1551, 0.2445, 0.2750, 0.3306, 0.3797, 0.4687, 0.6034, 0.7795, 0.7934, 0.9162, 0.9999],
-             [0.0001, 0.0591, 0.1551, 0.2445, 0.2528, 0.2750, 0.2806, 0.3306, 0.3797, 0.4687, 0.6034, 0.7795, 0.7934, 0.9162, 0.9999]]
-    proba([[10000, 5, 1]], at, ucuts)
-    print('suc')
+    y_grid = np.linspace(0, 500, 20)
+    r = proba(y_grid, [[10000, 5, 1], [300000, 5, 1]], at, ucuts, phi_star)
+
+    import matplotlib.pyplot as plt
+    for i in r:
+        plt.plot(y_grid, i)
+    plt.grid(True)
+    plt.xlabel("x") 
+    plt.ylabel("y")
+    plt.show()
+    plt.savefig('test.png')
+    print(r)
