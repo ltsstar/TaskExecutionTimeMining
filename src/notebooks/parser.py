@@ -200,8 +200,9 @@ def proba(ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : 
         r = post_fun(ygrid, mu, sigma, logprobs)
         probas = np.exp(r)
 
+        r = np.mean(probas, axis=0)
         #mean probs
-        res.append(np.mean(probas, axis=0))
+        res.append(r)
     return res
 
 if __name__ == '__main__':
@@ -211,15 +212,17 @@ if __name__ == '__main__':
     phi_star = p.parse_phistar()
     ucuts = p.parse_ucuts()
     at = AllTrees(mean_trees, prec_trees)
-    y_grid = np.linspace(0, 500, 20)
-    r = proba(y_grid, [[10000, 5, 1], [300000, 5, 1]], at, ucuts, phi_star)
+    y_grid = np.linspace(0, 500, 250)
+    x = [[10000, 5, 1], [300000, 5, 1]]
+    r = proba(y_grid, x, at, ucuts, phi_star)
 
     import matplotlib.pyplot as plt
-    for i in r:
-        plt.plot(y_grid, i)
+    for i, j in zip(r, x):
+        plt.plot(y_grid, i, label=str(j))
+    plt.legend(loc="upper left")
     plt.grid(True)
     plt.xlabel("x") 
     plt.ylabel("y")
-    plt.show()
-    plt.savefig('test.png')
+    #plt.show()
+    plt.savefig('test1.png')
     print(r)
