@@ -27,9 +27,9 @@ y <- df_xy[, 'duration_seconds']
 
 
 
-fit <- drbart(y, x, nburn=200, nsim=20, nthin=2,
-              m_mean=50,
-              m_var=50,
+fit <- drbart(y, x, nburn=100, nsim=10, nthin=10,
+              m_mean=88,
+              m_var=69,
               variance='ux',# alpha = 0.5, beta = 0.5,
               mean_cuts=list(
                 seq(
