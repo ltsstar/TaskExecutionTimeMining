@@ -163,20 +163,22 @@ class AllTrees:
         return weighted_res
 
 def logsumexp(tmp):
-    m = max(tmp)
-    res = 0
-    for t in tmp:
-        res += np.exp(t - m)
-    return m + np.log(res)
+    m = np.max(tmp, axis=0)
+    tmp -= m
+    tmp = np.exp(tmp)
+    tmp = np.sum(tmp, axis=0)
+    tmp = m + np.log(tmp)
+    return tmp
 
 def dmixnorm(ygrid, logprob, sigma, mu):
     res = []
-    for y in ygrid:
-        tmp = []
-        for m, s, lp in zip(mu, sigma, logprob):
-            r = lp + np.log(scipy.stats.norm.pdf(y, loc=m, scale=s))
-            tmp.append(r)
-        res.append(logsumexp(tmp))
+    tmp = np.empty((len(logprob), len(ygrid)))
+    for i, (m, s, lp) in enumerate(zip(mu, sigma, logprob)):
+        lo = np.log(scipy.stats.norm.pdf(ygrid, loc=m, scale=s))
+        r = np.full(len(ygrid), lp) + lo
+        tmp[i] = r
+
+    res = logsumexp(tmp)
     return res
 
 def post_fun(ygrid, mus, sigma, logprobs):
@@ -224,5 +226,5 @@ if __name__ == '__main__':
     plt.xlabel("x") 
     plt.ylabel("y")
     #plt.show()
-    plt.savefig('test1.png')
+    plt.savefig('test.png')
     print(r)
