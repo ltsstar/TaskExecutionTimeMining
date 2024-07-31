@@ -3,6 +3,76 @@ import numpy as np
 import random
 
 
+class Resource:
+    def __init__(self, name):
+        self.name = name
+
+    def sample_duration(self, activity, simulator):
+        raise NotImplementedError
+    
+    def __str__(self):
+        return str(self.name)
+
+
+class DefaultResource(Resource):
+    """
+    Simple normal distributed task durations
+    """
+    def sample_duration(self, activity, simulator):
+        return np.random.normal(1, 0.2)
+    
+
+class CoffeeTrinkerResource(Resource):
+    """
+    This resource sometimes makes a coffee during a task:
+        GMM durations during tasks
+    """
+    def sample_duration(self, activity, simulator):
+        return np.where(np.random.choice(a=[0, 1], size=1, p=[0.5, 0.5]),
+                    np.random.normal(1, 0.2, 1),
+                    np.random.normal(1.1, 0.2, 1)
+                )[0]
+
+
+class EarlyBirdResource(DefaultResource):
+    """
+    This resource is considerable faster in the morning than in the evening
+        Two different normal distributions
+    """
+    def sample_duration(self, activity, simulator):
+        duration = super().sample_duration(activity, simulator)
+        if simulator.current_time % 24 < 13:
+            duration *= np.random.uniform(0.6, 0.8)
+        else:
+            duration *= np.random.uniform(1.2, 1.4)
+        return duration
+
+
+class JoeResource(CoffeeTrinkerResource):
+    """
+    This resource takes longer when Jane has conducted a previous activity
+    """
+    def sample_duration(self, activity, simulator):
+        duration = super().sample_duration(activity, simulator)
+        jane_has_done_something = any(isinstance(a.resource, JaneResource) for a in activity.instance.activities)
+        if jane_has_done_something:
+            offset = np.random.normal(2, 0.2)
+            duration += offset
+        return duration
+
+class JaneResource(EarlyBirdResource):
+    """
+    This resource takes longer when Joe has conducted a previous activity
+    """
+    def sample_duration(self, activity, simulator):
+        duration = super().sample_duration(activity, simulator)
+        joe_has_done_something = any(isinstance(a.resource, JoeResource) for a in activity.instance.activities)
+        if joe_has_done_something:
+            offset = np.random.normal(2, 0.2)
+            duration += offset
+        return duration
+
+
 class ActivityTypes(Enum):
     DIAGNOSIS = 0
     REPAIR = 1
@@ -22,35 +92,17 @@ class Activity:
         self.type = type
         self.state = ActivityState.ACTIVATED
         self.instance = instance
+        self.resource = None
 
-    def start(self):
+    def start(self, resource):
         self.state = ActivityState.STARTED
+        self.resource = resource
 
     def complete(self):
         self.state = ActivityState.COMPLETED
 
     def __str__(self):
         return self.type.name
-
-
-class Resource:
-    def __init__(self, name):
-        self.name = name
-
-    def sample_duration(self, activity, simulator):
-        raise NotImplementedError
-    
-    def __str__(self):
-        return str(self.name)
-
-
-class DefaultResource(Resource):
-    def sample_duration(self, activity, simulator):
-            return np.where(np.random.choice(a=[0, 1], size=1, p=[0.5, 0.5]),
-                             np.random.normal(200.2, 0.2, 1),
-                             np.random.normal(600, 0.2, 1)
-                           )[0]
-
 
 class ControlFlow:
     def __init__(self):
@@ -117,7 +169,10 @@ class Event:
 class Resources:
     def __init__(self, simulator):
         self.resources = [DefaultResource(1),
-                          DefaultResource(2)]
+                          JaneResource("Jane"),
+                          JoeResource("Joe"),
+                          EarlyBirdResource("Clark"),
+                          CoffeeTrinkerResource("Karsten")]
         self.idle_resources = self.resources.copy()
         self.working_resources = []
         self.simulator = simulator
@@ -188,7 +243,7 @@ class ProcessSimulator:
         self.activated_activities.append(event.data['activity'])
 
     def _activity_started(self, event):
-        event.data['activity'].start()
+        event.data['activity'].start(event.data['resource'])
 
     def _activity_completed(self, event):
         event.data['activity'].complete()
@@ -253,5 +308,5 @@ class PrintLogger:
         print(event.time, instance, event.type, activity, resource)
 
 simulator = ProcessSimulator(logger=PrintLogger())
-simulator.simulate(24*7)
+simulator.simulate(24*365)
 print('hallo')
