@@ -30,18 +30,16 @@ class Parser:
         trees = []
         for i in range(n_mh_samples):
             for j in range(number_trees):
-                tree = self.parse_tree(dimensions_x, f, variables)
+                tree = self.parse_tree(f, variables)
                 trees.append(tree)
                 f.readline()
         return (number_trees, dimensions_x, n_mh_samples), trees
 
-    def parse_tree(self, dimensions_x, f, variables):
+    def parse_tree(self, f, variables):
         num_nodes = int(f.readline())
         nodes = dict()
         for i in range(num_nodes):
             elements = f.readline().split()
-            if len(elements) != dimensions_x:
-                raise Exception()
             node = Node(*elements)
             node.cut_value = variables[node.variable][node.cut_point]
             nodes[node.id] = node
@@ -206,6 +204,9 @@ def proba(ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : 
         #mean probs
         res.append(r)
     return res
+
+def sample(x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
+    pass
 
 if __name__ == '__main__':
     p = Parser()
