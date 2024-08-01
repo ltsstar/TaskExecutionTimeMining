@@ -163,6 +163,8 @@ class AllTrees:
 def logsumexp(tmp):
     m = np.max(tmp, axis=0)
     tmp -= m
+    #dirty fix: -inf - (-int) = 0 and not NaN
+    tmp = np.where(np.isnan(tmp), 0, tmp)
     tmp = np.exp(tmp)
     tmp = np.sum(tmp, axis=0)
     tmp = m + np.log(tmp)
