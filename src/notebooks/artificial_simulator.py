@@ -1,6 +1,10 @@
 from enum import Enum
 import numpy as np
 import random
+import pandas as pd
+from pm4py.objects.conversion.log import converter as log_converter
+import pm4py
+from datetime import datetime, timedelta
 
 
 class Resource:
@@ -19,19 +23,25 @@ class DefaultResource(Resource):
     Simple normal distributed task durations
     """
     def sample_duration(self, activity, simulator):
-        return np.random.normal(1, 0.2)
+        if activity.type == ActivityTypes.DIAGNOSIS:
+            return np.random.lognormal(np.log(1), 0.2/1)
+        elif activity.type == ActivityTypes.REPAIR:
+            return np.random.lognormal(np.log(6), 3/6)
+        elif activity.type == ActivityTypes.QUALITY_CONTROL:
+            return np.random.lognormal(np.log(3), 0.5/3)
     
 
-class CoffeeTrinkerResource(Resource):
+class CoffeeTrinkerResource(DefaultResource):
     """
     This resource sometimes makes a coffee during a task:
         GMM durations during tasks
     """
     def sample_duration(self, activity, simulator):
-        return np.where(np.random.choice(a=[0, 1], size=1, p=[0.5, 0.5]),
-                    np.random.normal(1, 0.2, 1),
-                    np.random.normal(1.1, 0.2, 1)
-                )[0]
+        duration = super().sample_duration(activity, simulator)
+        if np.random.choice([True, False], size=1, p=[0.2, 0.8])[0]:
+            coffee_duration = np.random.lognormal(np.log(10/60), 5/60/(10/60))
+            duration += coffee_duration
+        return duration
 
 
 class EarlyBirdResource(DefaultResource):
@@ -56,8 +66,8 @@ class JoeResource(CoffeeTrinkerResource):
         duration = super().sample_duration(activity, simulator)
         jane_has_done_something = any(isinstance(a.resource, JaneResource) for a in activity.instance.activities)
         if jane_has_done_something:
-            offset = np.random.normal(2, 0.2)
-            duration += offset
+            offset = np.random.lognormal(np.log(2), 0.1/2)
+            duration *= offset
         return duration
 
 class JaneResource(EarlyBirdResource):
@@ -68,8 +78,8 @@ class JaneResource(EarlyBirdResource):
         duration = super().sample_duration(activity, simulator)
         joe_has_done_something = any(isinstance(a.resource, JoeResource) for a in activity.instance.activities)
         if joe_has_done_something:
-            offset = np.random.normal(2, 0.2)
-            duration += offset
+            offset = np.random.lognormal(np.log(3), 0.1/3)
+            duration *= offset
         return duration
 
 
@@ -81,9 +91,12 @@ class ActivityTypes(Enum):
 
 
 class ActivityState(Enum):
-    ACTIVATED = 0
-    STARTED = 1
-    COMPLETED = 2
+    ACTIVATED = 'SCHEDULE'
+    STARTED = 'START'
+    COMPLETED = 'COMPLETE'
+
+    def __str__(self):
+        return str(self.value)
 
 
 class Activity:
@@ -276,11 +289,15 @@ class ProcessSimulator:
         if self.logger:
             self.logger.log(event)
 
+    def finish_log(self):
+        if self.logger:
+            self.logger.finish()
+
     def simulate(self, max_time = np.inf):
         self.start_time = self.current_time
         while len(self.event_queue):
             if max_time < self.current_time - self.start_time:
-                return
+                break
             current_event = self.event_queue.pop(0)
             self.current_time = current_event.time
 
@@ -289,7 +306,7 @@ class ProcessSimulator:
             elif current_event.type == EventType.ACTIVITY_ACTIVATE:
                 self._activity_activated(current_event)
             elif current_event.type == EventType.ACTIVITY_START:
-                pass
+                self._activity_started(current_event)
             elif current_event.type == EventType.ACTIVITY_COMPLETE:
                 self._activity_completed(current_event)
             elif current_event.type == EventType.INSTANCE_COMPLETE:
@@ -298,7 +315,9 @@ class ProcessSimulator:
             self._start_activated_activities()
             self.event_queue.sort(key = lambda event : event.time)
             self.log_event(current_event)
+        self.finish_log()
         return
+
 
 class PrintLogger:
     def log(self, event):
@@ -307,6 +326,59 @@ class PrintLogger:
         resource = event.data['resource'] if event.type in [EventType.ACTIVITY_START] else None
         print(event.time, instance, event.type, activity, resource)
 
-simulator = ProcessSimulator(logger=PrintLogger())
-simulator.simulate(24*365)
+    def finish(self):
+        pass
+
+class PandasLogger:
+    def __init__(self):
+        self.data = []
+        self.start_time = datetime(2020, 1, 1)
+
+    def log(self, event):
+        if event.type == EventType.ACTIVITY_START:
+            activity = event.data['activity']
+            resource = event.data['resource']
+            timestamp = self.start_time + timedelta(hours = event.time)
+            self.data.append([str(activity.instance), str(activity), timestamp, str(resource)])
+
+    def finish(self):
+        self.df = pd.DataFrame(self.data, columns = ['case:concept:name', 'concept:name', 'time:timestamp', 'org:resource'])
+
+
+class XESLogger(PandasLogger):
+    def finish(self):
+        super().finish()
+        # Convert DataFrame to Event Log
+        log = log_converter.apply(self.df, variant=log_converter.Variants.TO_EVENT_LOG)
+        # Export to XES
+        pm4py.write_xes(log, 'event_log.xes')
+
+
+class XESLifeCycleLogger:
+    def __init__(self):
+        self.data = []
+        self.start_time = datetime(2020, 1, 1)
+
+    def log(self, event):
+        if event.type in [EventType.ACTIVITY_ACTIVATE, EventType.ACTIVITY_START, EventType.ACTIVITY_COMPLETE]:
+            activity = event.data['activity']
+            instance = event.data['activity'].instance
+            resource = event.data['resource'] if event.type != EventType.ACTIVITY_ACTIVATE else None
+            timestamp = self.start_time + timedelta(hours = event.time)
+            self.data.append([str(instance), str(activity), activity.state, timestamp, str(resource)])
+
+    def finish(self):
+        self.df = pd.DataFrame(self.data, columns = ['case:concept:name', 'concept:name', 'lifecycle:transition', 'time:timestamp', 'org:resource'])
+        # Convert DataFrame to Event Log
+        log = log_converter.apply(self.df, variant=log_converter.Variants.TO_EVENT_LOG)
+        # Export to XES
+        pm4py.write_xes(log, 'event_log_2.xes')
+
+class CSVLogger(PandasLogger):
+    def finish(self):
+        super().finish()
+        self.df.to_csv('event_log.csv', index=False)
+
+simulator = ProcessSimulator(logger=XESLifeCycleLogger())
+simulator.simulate(24*365*5)
 print('hallo')
