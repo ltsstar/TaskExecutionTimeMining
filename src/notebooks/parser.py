@@ -10,6 +10,7 @@ class Parser:
         self.f_dr_bart_prec = open('dr_bart_prec.txt')
         self.ucut_file = open('ucuts.json')
         self.phistar_file = open('phistar.json')
+        self.encoding_file = open('encoding.json')
 
     def parse_variables(self, f):
         number_variables = int(f.readline())
@@ -71,6 +72,19 @@ class Parser:
 
     def parse_phistar(self):
         return json.load(self.phistar_file)
+    
+    def parse_encoding(self):
+        enc = json.load(self.encoding_file)
+        self.encoding_name_to_id = [dict(zip(e, list(range(1,len(e)+1)))) for e in enc]
+        self.encoding_id_to_name = [dict(zip(list(range(1,len(e)+1)), e)) for e in enc]
+        return self.encoding_name_to_id, self.encoding_id_to_name
+    
+    def get_encoding(self, x : list):
+         return [self.encoding_name_to_id[i][j] for i, j in zip(range(len(x)), x)]
+    
+    def get_encodings(self, x : list[list]):
+        return [self.get_encoding(x_row) for x_row in x]
+
 
 class Node:
     def __init__(self, id, variable, cut_point, mu):
@@ -174,7 +188,8 @@ def dmixnorm(ygrid, logprob, sigma, mu):
     res = []
     tmp = np.empty((len(logprob), len(ygrid)))
     for i, (m, s, lp) in enumerate(zip(mu, sigma, logprob)):
-        lo = np.log(scipy.stats.norm.pdf(ygrid, loc=m, scale=s))
+        n = scipy.stats.norm.pdf(ygrid, loc=m, scale=s)
+        lo = np.log(n)
         r = np.full(len(ygrid), lp) + lo
         tmp[i] = r
 
@@ -228,6 +243,8 @@ def sample(x : list, n : int, trees : AllTrees, ucuts : list[list[float]], phi_s
         res.append(r)
 
     return res
+
+
 if __name__ == '__main__':
     p = Parser()
     mean_cut_variables, mean_trees = p.parse_mean()
