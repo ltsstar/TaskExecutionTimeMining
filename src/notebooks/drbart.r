@@ -1,70 +1,42 @@
 library(cleandata)
 library(devtools)
 library(jsonlite)
+devtools::install_github('ltsstar/drbart', ref = 'main')
+library(drbart)
 
-load_all('~/Documents/drbart')
-setwd("~/Documents/TaskExecutionTimeMining/src/notebooks")
+#load_all('~/Documents/drbart')
+#setwd("~/Documents/TaskExecutionTimeMining/src/notebooks")
 
-df <- read.csv('./bpic_clean.csv')
+
+df <- read.csv('./artificial_start_end_2.csv')
+
+x_values <- c('org.resource', 'concept.name')
+y_value <- 'duration_seconds'
+
+
+
+#
+# STATIC PART
+#
 
 df_xy = na.omit(
-  df[,c(
-    'case.AMOUNT_REQ_complete',
-    'org.resource',
-    'concept.name',
-    'duration_seconds'
-    )]
+  df[,c(x_values, y_value)]
 )
 
-write.csv(na.omit(df), 'celonis.csv')
-#df_xy = subset(df_xy, case.AMOUNT_REQ_complete > 10000)
-df_xy$org.resource <- factor(df_xy$org.resource,
-                             levels = unique(df$org.resource))
-df_xy$concept.name <- factor(df_xy$concept.name,
-                             levels = unique(df$concept.name))
-x <- data.matrix(df_xy[, names(df_xy) != 'duration_seconds'])
+enc <- lapply(x_values, function(x_value) {unique(df_xy[,x_value])})
+
+df_xy <- apply(df_xy, 2, function(x) {as.numeric(factor(x, levels = unique(x)))})
+
+
+x <- df_xy[, colnames(df_xy) != y_value]
 y <- df_xy[, 'duration_seconds']
 
-
+enc2 <- lapply(enc, function(v) {as.numeric(labels(v))})
 
 fit <- drbart(y, x, nburn=100, nsim=10, nthin=10,
-              m_mean=88,
-              m_var=69,
-              variance='ux',# alpha = 0.5, beta = 0.5,
-              mean_cuts=list(
-                seq(
-                  min(df_xy$case.AMOUNT_REQ_complete),
-                  max(df_xy$case.AMOUNT_REQ_complete),
-                  length.out=min(
-                    10000,
-                    length(unique(df_xy$case.AMOUNT_REQ_complete))
-                  )),
-                unique(df_xy$org.resource),
-                unique(df_xy$concept.name)
-              )
+              variance='ux',
+              mean_cuts=enc2
 )
 write_json(fit$fit$ucuts, path = "ucuts.json")
 write_json(fit$fit$phistar, path = "phistar.json")
-
-concept_pred <- factor(c('W_Afhandelen leads', 'W_Afhandelen leads'
-                         ),
-                       levels = unique(df$concept.name))
-resource_pred <- factor(c(10228, 10228),
-                        levels = unique(df$org.resource))
-
-x_pred <- as.matrix(
-  data.matrix(
-    data.frame(case.AMOUNT_REQ_start <- c(10000, 300000),
-               org.resource <- c(5, 5),#resource_pred,
-               concept.name <- c(1, 1)#concept_pred
-               #concept.name <- concept_pred,
-    )
-  ),
-  ncol=3)
-
-
-ygrid <- seq(0, 500, length.out=20)
-load_all('~/Documents/drbart')
-pred <- predict(fit, x_pred, ygrid)
-plot(pred)
-
+write_json(enc, path = "encoding.json")
