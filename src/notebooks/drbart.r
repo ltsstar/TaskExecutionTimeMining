@@ -1,3 +1,26 @@
+#
+# DYNAMIC PART
+#
+
+#setwd("~/Documents/TaskExecutionTimeMining/src/notebooks")
+
+
+file_location < - './bpic_clean.csv'
+
+x_values_categorical <- c('org.resource', 'concept.name')
+x_values_continous <- c('case.AMOUNT_REQ_start')
+y_value <- 'duration_seconds'
+
+
+nburn <- 10000
+nsim <- 100
+nthin <- 100
+
+
+#
+# STATIC PART
+#
+
 library(cleandata)
 library(devtools)
 library(jsonlite)
@@ -5,20 +28,8 @@ devtools::install_github('ltsstar/drbart', ref = 'main')
 library(drbart)
 
 #load_all('~/Documents/drbart')
-setwd("~/Documents/TaskExecutionTimeMining/src/notebooks")
 
-
-df <- read.csv('./bpic_clean.csv')
-
-x_values_categorical <- c('org.resource', 'concept.name')
-x_values_continous <- c('case.AMOUNT_REQ_start')
-y_value <- 'duration_seconds'
-
-
-
-#
-# STATIC PART
-#
+df <- read.csv(file_location)
 
 col_names <- c(x_values_categorical, x_values_continous, y_value)
 df_xy = na.omit(
@@ -59,7 +70,7 @@ enc3 <- lapply(x_values_continous, function(name){
   )
 })
 
-fit <- drbart(y, x, nburn=100, nsim=10, nthin=10,
+fit <- drbart(y, x, nburn=nburn, nsim=nsim, nthin=nthin,
               variance='ux',
               mean_cuts=c(enc2, enc3)
 )
