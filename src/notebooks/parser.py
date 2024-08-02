@@ -207,9 +207,27 @@ def proba(ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : 
         res.append(r)
     return res
 
-def sample(x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
-    pass
+def sample(x : list, n : int, trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
+    logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
+    mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
 
+    res = []
+    for i in range(n):
+        selected_tree = np.random.choice(np.arange(len(phi_star)), size=1, p=np.array(phi_star) / np.sum(phi_star))[0]
+                                        
+        pr = [np.exp(lp) for lp in logprobs]
+        sp = [np.sum(p) for p in pr]
+
+        m = np.random.choice(mids[selected_tree], size=1, p=pr[selected_tree])[0]
+        des = [m] + x
+
+        mean = trees.mean_trees[selected_tree].fit_i(des)
+        prec = trees.prec_trees[selected_tree].fit_i_mult(des)
+
+        r = np.random.normal(loc = mean, scale = prec)
+        res.append(r)
+
+    return res
 if __name__ == '__main__':
     p = Parser()
     mean_cut_variables, mean_trees = p.parse_mean()
