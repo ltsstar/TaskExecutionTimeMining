@@ -5,12 +5,12 @@ import math
 import json
 
 class Parser:
-    def __init__(self):
-        self.f_dr_bart_mean = open('dr_bart_mean.txt')
-        self.f_dr_bart_prec = open('dr_bart_prec.txt')
-        self.ucut_file = open('ucuts.json')
-        self.phistar_file = open('phistar.json')
-        self.encoding_file = open('encoding.json')
+    def __init__(self, dir : str = ''):
+        self.f_dr_bart_mean = open(dir + 'dr_bart_mean.txt')
+        self.f_dr_bart_prec = open(dir + 'dr_bart_prec.txt')
+        self.ucut_file = open(dir + 'ucuts.json')
+        self.phistar_file = open(dir + 'phistar.json')
+        self.encoding_file = open(dir + 'encoding.json')
 
     def parse_variables(self, f):
         number_variables = int(f.readline())
@@ -174,75 +174,81 @@ class AllTrees:
             weighted_res.append(phi * r)
         return weighted_res
 
-def logsumexp(tmp):
-    m = np.max(tmp, axis=0)
-    tmp -= m
-    #dirty fix: -inf - (-inf) = 0 and not NaN
-    tmp = np.where(np.isnan(tmp), 0, tmp)
-    tmp = np.exp(tmp)
-    tmp = np.sum(tmp, axis=0)
-    tmp = m + np.log(tmp)
-    return tmp
+class DBART:
+    def __init__(self, parser : Parser = None,
+                 parser_dir : str = ''):
+        if not parser:
+            self.parser = Parser(parser_dir)
 
-def dmixnorm(ygrid, logprob, sigma, mu):
-    res = []
-    tmp = np.empty((len(logprob), len(ygrid)))
-    for i, (m, s, lp) in enumerate(zip(mu, sigma, logprob)):
-        n = scipy.stats.norm.pdf(ygrid, loc=m, scale=s)
-        lo = np.log(n)
-        r = np.full(len(ygrid), lp) + lo
-        tmp[i] = r
+    def _logsumexp(self, tmp):
+        m = np.max(tmp, axis=0)
+        tmp -= m
+        #dirty fix: -inf - (-inf) = 0 and not NaN
+        tmp = np.where(np.isnan(tmp), 0, tmp)
+        tmp = np.exp(tmp)
+        tmp = np.sum(tmp, axis=0)
+        tmp = m + np.log(tmp)
+        return tmp
 
-    res = logsumexp(tmp)
-    return res
+    def _dmixnorm(self, ygrid, logprob, sigma, mu):
+        res = []
+        tmp = np.empty((len(logprob), len(ygrid)))
+        for i, (m, s, lp) in enumerate(zip(mu, sigma, logprob)):
+            n = scipy.stats.norm.pdf(ygrid, loc=m, scale=s)
+            lo = np.log(n)
+            r = np.full(len(ygrid), lp) + lo
+            tmp[i] = r
 
-def post_fun(ygrid, mus, sigma, logprobs):
-    res = []
-    for mu_i, sigma_i, logprob_i in zip(mus, sigma, logprobs):
-        res.append(dmixnorm(ygrid, logprob_i, sigma_i, mu_i))
-    return res
+        res = self._logsumexp(tmp)
+        return res
+
+    def post_fun(self, ygrid, mus, sigma, logprobs):
+        res = []
+        for mu_i, sigma_i, logprob_i in zip(mus, sigma, logprobs):
+            res.append(self._dmixnorm(ygrid, logprob_i, sigma_i, mu_i))
+        return res
 
 
-def proba(ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
-    logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
-    mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
+    def proba(self, ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
+        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
+        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
 
-    res = []
-    for x_row in x_matrix:
-        des = [[[m] + x_row for m in mid] for mid in mids]
-        mu = trees.predict(des)
+        res = []
+        for x_row in x_matrix:
+            des = [[[m] + x_row for m in mid] for mid in mids]
+            mu = trees.predict(des)
 
-        phi = trees.predict_prec(phi_star, des)
-        sigma = [[1 / math.sqrt(p) for p in ph] for ph in phi]
-        r = post_fun(ygrid, mu, sigma, logprobs)
-        probas = np.exp(r)
+            phi = trees.predict_prec(phi_star, des)
+            sigma = [[1 / math.sqrt(p) for p in ph] for ph in phi]
+            r = post_fun(ygrid, mu, sigma, logprobs)
+            probas = np.exp(r)
 
-        r = np.mean(probas, axis=0)
-        #mean probs
-        res.append(r)
-    return res
+            r = np.mean(probas, axis=0)
+            #mean probs
+            res.append(r)
+        return res
 
-def sample(x : list, n : int, trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
-    logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
-    mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
+    def sample(self, x : list, n : int, trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
+        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
+        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
 
-    res = []
-    for i in range(n):
-        selected_tree = np.random.choice(np.arange(len(phi_star)), size=1, p=np.array(phi_star) / np.sum(phi_star))[0]
-                                        
-        pr = [np.exp(lp) for lp in logprobs]
-        sp = [np.sum(p) for p in pr]
+        res = []
+        for i in range(n):
+            selected_tree = np.random.choice(np.arange(len(phi_star)), size=1, p=np.array(phi_star) / np.sum(phi_star))[0]
+                                            
+            pr = [np.exp(lp) for lp in logprobs]
+            sp = [np.sum(p) for p in pr]
 
-        m = np.random.choice(mids[selected_tree], size=1, p=pr[selected_tree])[0]
-        des = [m] + x
+            m = np.random.choice(mids[selected_tree], size=1, p=pr[selected_tree])[0]
+            des = [m] + x
 
-        mean = trees.mean_trees[selected_tree].fit_i(des)
-        prec = trees.prec_trees[selected_tree].fit_i_mult(des)
+            mean = trees.mean_trees[selected_tree].fit_i(des)
+            prec = trees.prec_trees[selected_tree].fit_i_mult(des)
 
-        r = np.random.normal(loc = mean, scale = prec)
-        res.append(r)
+            r = np.random.normal(loc = mean, scale = prec)
+            res.append(r)
 
-    return res
+        return res
 
 
 if __name__ == '__main__':
