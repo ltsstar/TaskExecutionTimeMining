@@ -144,7 +144,6 @@ class IterateTrees:
     Generate prediction for the ith mcmc iterate
     '''
     def predict_prec_i(self, desired_x_rows : list[list]):
-        print('predict_prec_i')
         res = []
         for x_row in desired_x_rows:
             r = self.fit_i_mult(x_row)
@@ -159,14 +158,14 @@ class AllTrees:
 
     def predict(self, des : list[list[float]]):
         res = []
-        for des_x, mean_tree in zip(des, mean_trees):
+        for des_x, mean_tree in zip(des, self.mean_trees):
             p_i = mean_tree.predict_i(des_x)
             res.append(p_i)
         return res
     
     def predict_prec(self, phi_star : list[float], des : list[list[float]]):
         res = []
-        for des_x, prec_tree in zip(des, prec_trees):
+        for des_x, prec_tree in zip(des, self.prec_trees):
             p_i = prec_tree.predict_prec_i(des_x)
             res.append(p_i)
         weighted_res = []
@@ -174,11 +173,18 @@ class AllTrees:
             weighted_res.append(phi * r)
         return weighted_res
 
-class DBART:
+class DRBART:
     def __init__(self, parser : Parser = None,
                  parser_dir : str = ''):
         if not parser:
             self.parser = Parser(parser_dir)
+        self.mean_cut_variables, self.mean_trees = self.parser.parse_mean()
+        self.prec_cut_variables, self.prec_trees = self.parser.parse_prec()
+        self.phi_star = self.parser.parse_phistar()
+        self.ucuts = self.parser.parse_ucuts()
+        self.parser.parse_encoding()
+        self.all_trees = AllTrees(self.mean_trees, self.prec_trees)
+        
 
     def _logsumexp(self, tmp):
         m = np.max(tmp, axis=0)
@@ -202,25 +208,38 @@ class DBART:
         res = self._logsumexp(tmp)
         return res
 
-    def post_fun(self, ygrid, mus, sigma, logprobs):
+    def _post_fun(self, ygrid, mus, sigma, logprobs):
         res = []
         for mu_i, sigma_i, logprob_i in zip(mus, sigma, logprobs):
             res.append(self._dmixnorm(ygrid, logprob_i, sigma_i, mu_i))
         return res
+    
+    def proba(self, ygrid : list[float], x_categorical : list[list], x_continous : list[list]):
+        x_rows_decoded = [k[0] + k[1] for k in zip(x_categorical, x_continous)]
+        x_encoded_categorical = self.parser.get_encodings(x_categorical)
+        x_rows = [k[0] + k[1] for k in zip(x_encoded_categorical, x_continous)]
+        res = self.proba_enc(ygrid, x_rows)
+        return list(zip(x_rows_decoded, res))
 
+    def sample(self, x_categorical : list, x_continous : list, n : int = 1):
+        x_rows_decoded = x_categorical + x_continous
+        x_encoded_categorical = self.parser.get_encoding(x_categorical)
+        x_rows = x_encoded_categorical + x_continous
+        res = self.sample_enc(x_rows, n)
+        return (x_rows_decoded, res)
 
-    def proba(self, ygrid : list[float], x_matrix : list[list], trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
-        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
-        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
+    def proba_enc(self, ygrid : list[float], x_matrix : list[list]):
+        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in self.ucuts ]
+        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in self.ucuts]
 
         res = []
         for x_row in x_matrix:
             des = [[[m] + x_row for m in mid] for mid in mids]
-            mu = trees.predict(des)
+            mu = self.all_trees.predict(des)
 
-            phi = trees.predict_prec(phi_star, des)
+            phi = self.all_trees.predict_prec(self.phi_star, des)
             sigma = [[1 / math.sqrt(p) for p in ph] for ph in phi]
-            r = post_fun(ygrid, mu, sigma, logprobs)
+            r = self._post_fun(ygrid, mu, sigma, logprobs)
             probas = np.exp(r)
 
             r = np.mean(probas, axis=0)
@@ -228,47 +247,54 @@ class DBART:
             res.append(r)
         return res
 
-    def sample(self, x : list, n : int, trees : AllTrees, ucuts : list[list[float]], phi_star : list[float]):
-        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in ucuts ]
-        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in ucuts]
+    def sample_enc(self, x : list, n : int):
+        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in self.ucuts ]
+        mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in self.ucuts]
 
         res = []
         for i in range(n):
-            selected_tree = np.random.choice(np.arange(len(phi_star)), size=1, p=np.array(phi_star) / np.sum(phi_star))[0]
-                                            
-            pr = [np.exp(lp) for lp in logprobs]
-            sp = [np.sum(p) for p in pr]
+            selected_it = np.random.choice(np.arange(len(self.phi_star)), size=1, p=np.array(self.phi_star) / np.sum(self.phi_star))[0]
 
-            m = np.random.choice(mids[selected_tree], size=1, p=pr[selected_tree])[0]
+            pr = [np.exp(lp) for lp in logprobs]
+            m = np.random.choice(mids[selected_it], size=1, p=pr[selected_it])[0]
             des = [m] + x
 
-            mean = trees.mean_trees[selected_tree].fit_i(des)
-            prec = trees.prec_trees[selected_tree].fit_i_mult(des)
+            mean = self.all_trees.mean_trees[selected_it].fit_i(des)
+            prec = self.all_trees.prec_trees[selected_it].fit_i_mult(des)
+            prec_2 = 1 / math.sqrt(prec)
 
-            r = np.random.normal(loc = mean, scale = prec)
+            r = np.random.normal(loc = mean, scale = prec_2)
             res.append(r)
-
         return res
 
 
 if __name__ == '__main__':
-    p = Parser()
-    mean_cut_variables, mean_trees = p.parse_mean()
-    prec_cut_variables, prec_trees = p.parse_prec()
-    phi_star = p.parse_phistar()
-    ucuts = p.parse_ucuts()
-    at = AllTrees(mean_trees, prec_trees)
-    y_grid = np.linspace(0, 500, 250)
-    x = [[10000, 5, 1], [300000, 5, 1]]
-    r = proba(y_grid, x, at, ucuts, phi_star)
-
     import matplotlib.pyplot as plt
-    for i, j in zip(r, x):
+
+    d = DRBART(parser_dir = '../../models/artificial/resource_concept_duration_seconds-day_resource-count_activity-count/')
+    y_grid = np.linspace(0, 100000, 10000)
+    x_cat = [['Joe', 'REPAIR',
+            #Joe  '1'  Karsten  Jane  Clark
+              0,   1,   0,       0,    0,
+            #DIAGNOSIS REPAIR
+              1,        0],
+              ['Joe', 'REPAIR',
+            #Joe  '1'  Karsten  Jane  Clark
+              0,   0,   0,       1,    0,
+            #DIAGNOSIS REPAIR
+              1,        0]]
+    x_cont = [[3600*8], [3600*8]]
+    #h = d.sample(x_cat[0], x_cont[0], 100000)
+
+    #plt.hist(h[1], bins=300, density=True)
+    r = d.proba(y_grid, x_cat, x_cont)
+
+    for j, i in r:
         plt.plot(y_grid, i, label=str(j))
     plt.legend(loc="upper left")
     plt.grid(True)
     plt.xlabel("x") 
     plt.ylabel("y")
     #plt.show()
-    plt.savefig('test.png')
+    plt.savefig('test.svg')
     print(r)
