@@ -1,0 +1,13 @@
+#!/bin/bash
+cd Artificial_Example
+jupyter nbconvert --to python Artificial_event_log_transformer.ipynb
+python Artificial_event_log_transformer.py
+rm Artificial_event_log_transformer.py
+cd ..
+
+cd BPIC_2017
+jupyter nbconvert --to python BPIC_2017_event_log_transformer.ipynb
+python BPIC_2017_event_log_transformer.py
+rm BPIC_2017_event_log_transformer.py
+cd ..
+

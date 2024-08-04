@@ -9,6 +9,7 @@ pm4py = "*"
 scikit-learn = "*"
 pot = "*"
 typing-extensions = "*"
+nbconvert = "*"
 
 [dev-packages]
 
