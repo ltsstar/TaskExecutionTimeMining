@@ -379,6 +379,6 @@ class CSVLogger(PandasLogger):
         super().finish()
         self.df.to_csv('event_log.csv', index=False)
 
-simulator = ProcessSimulator(logger=XESLifeCycleLogger())
-simulator.simulate(24*365*5)
-print('hallo')
+if __name__ == '__main__':
+    simulator = ProcessSimulator(logger=XESLifeCycleLogger())
+    simulator.simulate(24*365*5)
