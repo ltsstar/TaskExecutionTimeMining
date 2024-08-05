@@ -14,8 +14,92 @@ class TransformEventLog:
         start_end_event_log = merged_event_log[(merged_event_log[lifecycle_col_name + '_start'] == start_name) & (merged_event_log[lifecycle_col_name + '_complete'] == complete_name)]
         start_end_event_log.loc[:, 'duration'] = start_end_event_log[timestamp_name + '_complete'] - start_end_event_log[timestamp_name + '_start']
         start_end_event_log.loc[:, 'duration_seconds'] =  (start_end_event_log['duration']).astype('timedelta64[s]').astype(int)
-        start_end_event_log = start_end_event_log[start_end_event_log['duration_seconds'] > 0]
+        #start_end_event_log = start_end_event_log[start_end_event_log['duration_seconds'] > 0]
         return start_end_event_log
+
+    def start_end_event_log_mult(event_log,
+                            merge_activity_on = ['case:concept:name', 'org:resource', 'concept:name'],
+                            timestamp_name = 'time:timestamp',
+                            lifecycle_col_name = 'lifecycle:transition',
+                            start_name_1 = 'START',
+                            start_name_2 = 'START',
+                            start_name_3 = 'START',
+                            complete_name_1 = 'COMPLETE',
+                            complete_name_2 = 'COMPLETE',
+                            complete_name_3 = 'COMPLETE'):
+        merged_event_log = pandas.merge(event_log, event_log,
+                                    left_on=merge_activity_on,
+                                    right_on=merge_activity_on,
+                                    suffixes=('_start', '_complete'))
+        start_end_event_log = merged_event_log[
+            ((merged_event_log[lifecycle_col_name + '_start'] == start_name_1) | (merged_event_log[lifecycle_col_name + '_start'] == start_name_2) \
+                 | (merged_event_log[lifecycle_col_name + '_start'] == start_name_3)) & \
+            ((merged_event_log[lifecycle_col_name + '_complete'] == complete_name_1) | (merged_event_log[lifecycle_col_name + '_complete'] == complete_name_2)
+                 |  (merged_event_log[lifecycle_col_name + '_complete'] == complete_name_3))
+        ]
+        start_end_event_log.loc[:, 'duration'] = start_end_event_log[timestamp_name + '_complete'] - start_end_event_log[timestamp_name + '_start']
+        start_end_event_log.loc[:, 'duration_seconds'] =  (start_end_event_log['duration']).astype('timedelta64[s]').astype(int)
+
+
+        start_end_event_log = start_end_event_log[start_end_event_log['duration_seconds'] > 0]
+        ixs = start_end_event_log.groupby('EventID_start')['duration_seconds'].idxmin()
+        start_end_event_log = start_end_event_log.loc[ixs]
+
+
+        return start_end_event_log
+    
+    def waiting_time_event_log(event_log,
+                            merge_activity_on = ['case:concept:name', 'org:resource', 'concept:name'],
+                            timestamp_name = 'time:timestamp',
+                            lifecycle_col_name = 'lifecycle:transition',
+                            schedule_name = 'SCHEDULE',
+                            start_name = 'START'):
+        merged_event_log = pandas.merge(event_log, event_log,
+                                    left_on=merge_activity_on,
+                                    right_on=merge_activity_on,
+                                    suffixes=('_schedule', '_start'))
+        waiting_time_event_log = merged_event_log[(merged_event_log[lifecycle_col_name + '_schedule'] == schedule_name) & (merged_event_log[lifecycle_col_name + '_start'] == start_name)]
+        waiting_time_event_log.loc[:, 'duration'] = waiting_time_event_log[timestamp_name + '_start'] - waiting_time_event_log[timestamp_name + '_schedule']
+        waiting_time_event_log.loc[:, 'duration_seconds'] =  (waiting_time_event_log['duration']).astype('timedelta64[s]').astype(int)
+        waiting_time_event_log = waiting_time_event_log[waiting_time_event_log['duration_seconds'] > 0]
+        return waiting_time_event_log
+    
+    def case_duration_event_log(event_log,
+                                first_timestamp,
+                                second_timestamp,
+                                out_column_name='case_duration'):
+        merged_event_log = pandas.merge(event_log,
+                                        event_log[['case:concept:name', first_timestamp]],
+                                        left_on=['case:concept:name'],
+                                        right_on=['case:concept:name'],
+                                        suffixes=('', '_case_start'))
+
+        start_case_event_log = merged_event_log.loc[merged_event_log.groupby(['case:concept:name', 'concept:name'])[first_timestamp + '_case_start'].idxmin()]
+
+        merged_event_log = pandas.merge(start_case_event_log,
+                                        start_case_event_log[['case:concept:name', second_timestamp]],
+                                        left_on=['case:concept:name'],
+                                        right_on=['case:concept:name'],
+                                        suffixes=('', '_case_end'))
+
+        start_end_case_event_log = merged_event_log.loc[
+            merged_event_log.groupby(['case:concept:name', 'concept:name'])[second_timestamp + '_case_end'].idxmax()
+        ]
+        case_duration_log = start_end_case_event_log.copy()
+        case_duration_log[out_column_name] = case_duration_log[second_timestamp + '_case_end'] - case_duration_log[first_timestamp + '_case_start']
+        case_duration_log[out_column_name + '_seconds'] = (case_duration_log[out_column_name]).astype('timedelta64[s]').astype(int)
+
+        case_duration_log = case_duration_log.loc[case_duration_log.groupby('case:concept:name')['concept:name'].idxmin()]
+
+        case_duration_log = case_duration_log[['case:concept:name', first_timestamp + '_case_start', second_timestamp + '_case_end',
+                                            out_column_name, out_column_name + '_seconds']]
+        
+        return case_duration_log
+    
+    def case_duration_event_log_2(event_log,
+                                  activity_duration_col_name,
+                                  out_col_name='case_duration'):
+        return event_log.groupby(['case:concept:name'])[activity_duration_col_name + '_seconds'].sum().to_frame().rename(columns={activity_duration_col_name : out_col_name })
 
     def seconds_in_day(event_log,
                     timestamp_name = 'time:timestamp'):
