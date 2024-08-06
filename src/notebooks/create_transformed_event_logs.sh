@@ -14,7 +14,7 @@ jupyter nbconvert --to python BPIC_2017_event_log_transformer-resume_suspend.ipy
 python BPIC_2017_event_log_transformer-resume_suspend.py
 rm BPIC_2017_event_log_transformer-resumse_suspend.py
 
-jupyter nbconvert --to python BPIC_2017_event_log_waitng_transformer.ipynb
+jupyter nbconvert --to python BPIC_2017_event_log_waiting_transformer.ipynb
 python BPIC_2017_event_log_waiting_transformer.py
 rm BPIC_2017_event_log_waiting_transformer.py
 
