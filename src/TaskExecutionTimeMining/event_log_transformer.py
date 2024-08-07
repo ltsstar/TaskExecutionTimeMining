@@ -1,4 +1,5 @@
 import pandas
+import datetime
 
 class TransformEventLog:
     def start_end_event_log(event_log,
@@ -41,7 +42,7 @@ class TransformEventLog:
                  |  (merged_event_log[lifecycle_col_name + complete_name_gen] == complete_name_3))
         ]
         start_end_event_log.loc[:, 'duration'] = start_end_event_log[timestamp_name + complete_name_gen] - start_end_event_log[timestamp_name + start_name_gen]
-        start_end_event_log.loc[:, 'duration_seconds'] =  (start_end_event_log['duration']).astype('timedelta64[s]').astype(int)
+        start_end_event_log.loc[:, 'duration_seconds'] = start_end_event_log['duration'] / datetime.timedelta(seconds=1) #(start_end_event_log['duration']).astype('timedelta64[s]').astype(float)
 
 
         # bad idea: sometimes less than 1 second:
