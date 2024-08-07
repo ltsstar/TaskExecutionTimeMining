@@ -69,13 +69,13 @@ start_end_event_log.groupby(['lifecycle:transition_start', 'lifecycle:transition
 # In[10]:
 
 
-(start_end_event_log['duration_seconds']/3600).describe()
+(start_end_event_log['duration_seconds']).describe()
 
 
 # In[11]:
 
 
-(start_end_event_log['duration_seconds']/3600).plot.box()
+(start_end_event_log['duration_seconds']).plot.box()
 
 
 # In[12]:
