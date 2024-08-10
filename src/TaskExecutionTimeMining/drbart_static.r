@@ -38,7 +38,7 @@ x <- matrix(
       unlist(df_xy[names(df_xy) != y_value]),
       ncol = length(col_names) - 1
 )
-y <- df_xy[['duration_seconds']]
+y <- df_xy[[y_value]]
 
 enc2 <- lapply(enc, function(v) {as.numeric(labels(v))})
 enc3 <- lapply(x_values_continous, function(name){
