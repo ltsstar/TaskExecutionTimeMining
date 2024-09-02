@@ -27,7 +27,8 @@ class TransformEventLog:
         start_end_event_log = pandas.merge(event_log, event_log,
                                         left_on=merge_activity_on,
                                         right_on=merge_activity_on,
-                                        suffixes=(start_name_gen, complete_name_gen))
+                                        suffixes=(start_name_gen, complete_name_gen),
+                                        how='right')
         start_end_event_log.loc[:, 'duration'] = start_end_event_log[timestamp_name + complete_name_gen] - start_end_event_log[timestamp_name + start_name_gen]
         start_end_event_log.loc[:, 'duration_seconds'] = start_end_event_log['duration'] / datetime.timedelta(seconds=1) #(start_end_event_log['duration']).astype('timedelta64[s]').astype(float)
         start_end_event_log.loc[:, 'duration_ms'] = start_end_event_log['duration'] / datetime.timedelta(milliseconds=1)
