@@ -33,6 +33,9 @@ df_xy <- lapply(names(df_xy), function(col_name) {
 })
 names(df_xy) <- col_names
 
+#free memory
+rm(df)
+gc()
 
 x <- matrix(
       unlist(df_xy[names(df_xy) != y_value]),
@@ -51,8 +54,12 @@ enc3 <- lapply(x_values_continous, function(name){
   )
 })
 
+#free memory
+rm(df_xy)
+gc()
+
 fit <- drbart(y, x, nburn=nburn, nsim=nsim, nthin=nthin,
-              variance='ux',
+              variance='ux', printevery=100,
               mean_cuts=c(enc2, enc3)
 )
 write_json(fit$fit$ucuts, path = "ucuts.json")
