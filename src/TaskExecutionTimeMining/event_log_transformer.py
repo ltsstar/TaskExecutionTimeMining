@@ -40,6 +40,34 @@ class TransformEventLog:
 
         return start_end_event_log
 
+
+    def start_end_event_log_all(event_log,
+                            merge_activity_on = ['case:concept:name', 'concept:name'],
+                            timestamp_name = 'time:timestamp',
+                            lifecycle_col_name = 'lifecycle:transition',
+                            start_name_gen = '_start',
+                            complete_name_gen = '_complete',
+                            unique_column = 'EventID'):
+        start_end_event_log = pandas.merge(event_log, event_log,
+                                    left_on=merge_activity_on,
+                                    right_on=merge_activity_on,
+                                    suffixes=(start_name_gen, complete_name_gen))
+        
+        start_end_event_log.loc[:, 'duration'] = start_end_event_log[timestamp_name + complete_name_gen] - start_end_event_log[timestamp_name + start_name_gen]
+        start_end_event_log.loc[:, 'duration_seconds'] = start_end_event_log['duration'] / datetime.timedelta(seconds=1) #(start_end_event_log['duration']).astype('timedelta64[s]').astype(float)
+        start_end_event_log.loc[:, 'duration_ms'] = start_end_event_log['duration'] / datetime.timedelta(milliseconds=1)
+        start_end_event_log.loc[:, 'duration_hours'] = start_end_event_log['duration'] / datetime.timedelta(hours=1)
+
+        # bad idea: sometimes less than 1 second:
+        #start_end_event_log = start_end_event_log[start_end_event_log['duration_seconds'] > 0]
+        # better idea:
+        start_end_event_log = start_end_event_log[start_end_event_log[timestamp_name + complete_name_gen] > start_end_event_log[timestamp_name + start_name_gen]]
+        ixs = start_end_event_log.groupby(unique_column + start_name_gen)['duration_seconds'].idxmin()
+        start_end_event_log = start_end_event_log.loc[ixs]
+
+
+        return start_end_event_log
+
     def start_end_event_log_mult(event_log,
                             merge_activity_on = ['case:concept:name', 'concept:name'],
                             timestamp_name = 'time:timestamp',
