@@ -36,6 +36,7 @@ rm bpic_2018.zip
 
 bpic_2019="https://data.4tu.nl/ndownloader/items/35ed7122-966a-484e-a0e1-749b64e3366d/versions/1"
 wget -O bpic_2019.zip "$bpic_2019"
+unzip -o bpic_2019.zip
 rm bpic_2019.zip
 
 bpic_2020_dd="https://data.4tu.nl/ndownloader/items/6a0a26d2-82d0-4018-b1cd-89afb0e8627f/versions/1"
