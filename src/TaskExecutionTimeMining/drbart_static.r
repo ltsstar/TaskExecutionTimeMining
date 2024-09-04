@@ -6,7 +6,6 @@ library(purrr)
 library(cleandata)
 library(devtools)
 library(jsonlite)
-load_all('~/Documents/drbart')
 devtools::install_github('ltsstar/drbart', ref = 'main')
 library(drbart)
 
