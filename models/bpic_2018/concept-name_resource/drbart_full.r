@@ -25,13 +25,13 @@ nthin <- 150
 # STATIC PART
 #
 
+library(purrr)
 library(cleandata)
 library(devtools)
 library(jsonlite)
-devtools::install_github('ltsstar/drbart', ref = 'main')
+devtools::install_github('ltsstar/drbart', ref = 'main', force=FALSE)
 library(drbart)
 
-#load_all('~/Documents/drbart')
 
 df <- read.csv(file_location)
 
@@ -39,6 +39,10 @@ col_names <- c(x_values_categorical, x_values_continous, y_value)
 df_xy = na.omit(
   df[,col_names]
 )
+
+#free memory
+rm(df)
+gc()
 
 enc <- lapply(x_values_categorical, function(x_value) {unique(df_xy[,x_value])})
 
@@ -57,25 +61,39 @@ df_xy <- lapply(names(df_xy), function(col_name) {
 names(df_xy) <- col_names
 
 
-x <- matrix(
-      unlist(df_xy[names(df_xy) != y_value]),
-      ncol = length(col_names) - 1
-)
-y <- df_xy[[y_value]]
-
 enc2 <- lapply(enc, function(v) {as.numeric(labels(v))})
 enc3 <- lapply(x_values_continous, function(name){
   return(
     seq(min(df_xy[[name]]), max(df_xy[[name]]),
-                               length.out = min(
-                                 10000,
-                                 length(df_xy[[name]])
-                               ))
+        length.out = min(
+          10000,
+          length(df_xy[[name]])
+        ))
   )
 })
 
+df_x = df_xy[names(df_xy) != y_value]
+
+
+y <- df_xy[[y_value]]
+#ul <- unlist(df_x)
+ul <- purrr::flatten_dbl(df_x)
+
+#free memory
+rm(df_xy)
+gc()
+
+x <- matrix(
+      ul,
+      ncol = length(col_names) - 1
+)
+
+#free memory
+rm(ul)
+gc()
+
 fit <- drbart(y, x, nburn=nburn, nsim=nsim, nthin=nthin,
-              variance='ux', printevery=100,
+              variance='ux', printevery=1,
               mean_cuts=c(enc2, enc3)
 )
 write_json(fit$fit$ucuts, path = "ucuts.json")
