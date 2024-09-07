@@ -1,0 +1,16 @@
+# Ignore all files ending with .dmtcp in all directories
+**/*.dmtcp
+
+# Ignore all files starting with dmtcp in all directories
+**/dmtcp*
+
+
+# Ignore all directories starting with ckpt in all directories
+**/ckpt*/
+
+**/*.json
+**/*.out
+**/dr_bart_mean.txt
+**/dr_bart_prec.txt
+**/coordinator
+**/coordinator_log.log
