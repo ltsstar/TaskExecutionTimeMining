@@ -45,3 +45,6 @@ unzip -o bpic_2020_dd.zip
 rm README.txt
 gunzip -f 'DomesticDeclarations.xes.gz'
 rm bpic_2020_dd.zip
+
+PCR_event_log="https://lehre.bpm.in.tum.de/~kunkler/pcr_event_log.csv"
+wget -O pcr_event_log.csv "$PCR_event_log"
