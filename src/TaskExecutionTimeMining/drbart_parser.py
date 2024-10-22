@@ -5,12 +5,13 @@ import math
 import json
 
 class Parser:
-    def __init__(self, dir : str = ''):
+    def __init__(self, dir : str = '', strict = True):
         self.f_dr_bart_mean = open(dir + 'dr_bart_mean.txt')
         self.f_dr_bart_prec = open(dir + 'dr_bart_prec.txt')
         self.ucut_file = open(dir + 'ucuts.json')
         self.phistar_file = open(dir + 'phistar.json')
         self.encoding_file = open(dir + 'encoding.json')
+        self.strict = strict
 
     def parse_variables(self, f):
         number_variables = int(f.readline())
@@ -80,7 +81,12 @@ class Parser:
         return self.encoding_name_to_id, self.encoding_id_to_name
     
     def get_encoding(self, x : list):
-         return [self.encoding_name_to_id[i][j] for i, j in zip(range(len(x)), x)]
+         if self.strict:
+            return [self.encoding_name_to_id[i][j] for i, j in zip(range(len(x)), x)]
+         else:
+            return [self.encoding_name_to_id[i][j] if i in self.encoding_name_to_id and j in self.encoding_name_to_id[i]
+                    else 0
+                    for i, j in zip(range(len(x)), x)]
     
     def get_encodings(self, x : list[list]):
         return [self.get_encoding(x_row) for x_row in x]
@@ -175,9 +181,10 @@ class AllTrees:
 
 class DRBART:
     def __init__(self, parser : Parser = None,
-                 parser_dir : str = ''):
+                 parser_dir : str = '',
+                 strict_parser = True):
         if not parser:
-            self.parser = Parser(parser_dir)
+            self.parser = Parser(parser_dir, strict_parser)
         self.mean_cut_variables, self.mean_trees = self.parser.parse_mean()
         self.prec_cut_variables, self.prec_trees = self.parser.parse_prec()
         self.phi_star = self.parser.parse_phistar()
