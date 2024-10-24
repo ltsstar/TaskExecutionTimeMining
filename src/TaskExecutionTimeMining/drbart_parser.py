@@ -32,6 +32,7 @@ class Parser:
         trees = []
         for i in range(n_mh_samples):
             for j in range(number_trees):
+                print(i,j)
                 tree = self.parse_tree(f, variables)
                 trees.append(tree)
                 f.readline()

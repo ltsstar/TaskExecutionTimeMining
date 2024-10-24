@@ -1,0 +1,78 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<pnml>
+  <net id="imdf_net_1729699224.6546595" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel">
+    <name>
+      <text>imdf_net_1729699224.6546595</text>
+    </name>
+    <page id="n0">
+      <place id="source">
+        <name>
+          <text>source</text>
+        </name>
+        <initialMarking>
+          <text>1</text>
+        </initialMarking>
+      </place>
+      <place id="p_4">
+        <name>
+          <text>p_4</text>
+        </name>
+      </place>
+      <place id="p_3">
+        <name>
+          <text>p_3</text>
+        </name>
+      </place>
+      <place id="p_5">
+        <name>
+          <text>p_5</text>
+        </name>
+      </place>
+      <place id="sink">
+        <name>
+          <text>sink</text>
+        </name>
+      </place>
+      <place id="p_6">
+        <name>
+          <text>p_6</text>
+        </name>
+      </place>
+      <transition id="9bb22856-a04a-46c4-9b72-5ba934f3ed92">
+        <name>
+          <text>Wait for plate validation</text>
+        </name>
+      </transition>
+      <transition id="e7b5051d-e35b-4ebd-91f7-c606d3541423">
+        <name>
+          <text>timeout</text>
+        </name>
+      </transition>
+      <transition id="5b406863-0b9a-45f2-86bb-641b206611dd">
+        <name>
+          <text>Match patient data</text>
+        </name>
+      </transition>
+      <transition id="50cb032c-664e-4813-b469-b2e3e1fb2ace">
+        <name>
+          <text>Receive sample state</text>
+        </name>
+      </transition>
+      <transition id="b00d899c-c1bb-4096-9bb1-f56e1930cfe2">
+        <name>
+          <text>Callback timeout</text>
+        </name>
+      </transition>
+      <arc id="139714365264448" source="9bb22856-a04a-46c4-9b72-5ba934f3ed92" target="p_4"/>
+      <arc id="139714365263200" source="p_3" target="9bb22856-a04a-46c4-9b72-5ba934f3ed92"/>
+      <arc id="139714365262528" source="5b406863-0b9a-45f2-86bb-641b206611dd" target="p_3"/>
+      <arc id="139714365265696" source="e7b5051d-e35b-4ebd-91f7-c606d3541423" target="sink"/>
+      <arc id="139714365262576" source="source" target="5b406863-0b9a-45f2-86bb-641b206611dd"/>
+      <arc id="139714365264784" source="p_4" target="50cb032c-664e-4813-b469-b2e3e1fb2ace"/>
+      <arc id="139714365264880" source="50cb032c-664e-4813-b469-b2e3e1fb2ace" target="p_5"/>
+      <arc id="139714365265168" source="p_5" target="b00d899c-c1bb-4096-9bb1-f56e1930cfe2"/>
+      <arc id="139714365265264" source="b00d899c-c1bb-4096-9bb1-f56e1930cfe2" target="p_6"/>
+      <arc id="139714365265072" source="p_6" target="e7b5051d-e35b-4ebd-91f7-c606d3541423"/>
+    </page>
+  </net>
+</pnml>
