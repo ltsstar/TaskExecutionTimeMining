@@ -8,8 +8,9 @@ from evaluation import *
 
 
 class SampleOutcomes_Normal(SampleOutcomes):
-    def __init__(self, event_log):
+    def __init__(self, event_log, resources=True):
         super().__init__(event_log)
+        self.resources = resources
 
     def sample_end_time(self, case_log, start_time, net, im):
         get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
@@ -28,18 +29,25 @@ class SampleOutcomes_Normal(SampleOutcomes):
             row = case_log[case_log['concept:name'] == task].iloc[0]
             
             seconds_in_day = row['seconds_in_day']
-            resource = row['org:resource']
+            if self.resources:
+                resource = row['org:resource']
+            else:
+                resource = None
             concept_name = row['concept:name']
 
             # feature encoding : aggregation encoding
             activity_count[row['concept:name']] += 1
-            resource_count[row['org:resource']] += 1
+            if self.resources:
+                resource_count[row['org:resource']] += 1
+            else:
+                resource_count = None
 
             # feature engineering
             current_time_ts = datetime.datetime.fromtimestamp(current_time)
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
             day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()
             
+            print(concept_name, seconds_in_day)
            
             finish_time = self.sample_duration(seconds_in_day = seconds_in_day,
                                                resource = resource,
@@ -48,6 +56,7 @@ class SampleOutcomes_Normal(SampleOutcomes):
                                                activity_count = activity_count,
                                                day_of_week = day_of_week
                                               )
+            print(task, finish_time)
             current_time += finish_time
             marking = semantics.execute(pn_task, net, marking)
 
