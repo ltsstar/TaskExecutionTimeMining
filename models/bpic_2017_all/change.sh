@@ -6,11 +6,11 @@ replace_values() {
   local src_location_pattern="file_location <- '.*'"
   local new_src_location="file_location <- '../../../src/notebooks/transformed_event_logs/BPIC_2017_all_train.csv'"
   local old_nburn_pattern="nburn <- [0-9]*"
-  local new_nburn="nburn <- 25000"
+  local new_nburn="nburn <- 7500"
   local old_nsim_pattern="nsim <- [0-9]*"
-  local new_nsim="nsim <- 150"
+  local new_nsim="nsim <- 50"
   local old_nthin_pattern="nthin <- [0-9]*"
-  local new_nthin="nthin <- 150"
+  local new_nthin="nthin <- 50"
 
   # Use sed to perform in-place substitutions with regular expressions
   sed -i "s/$old_nburn_pattern/$new_nburn/g" "$file"
