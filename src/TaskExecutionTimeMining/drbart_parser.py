@@ -85,7 +85,7 @@ class Parser:
          if self.strict:
             return [self.encoding_name_to_id[i][j] for i, j in zip(range(len(x)), x)]
          else:
-            return [self.encoding_name_to_id[i][j] if i in self.encoding_name_to_id and j in self.encoding_name_to_id[i]
+            return [self.encoding_name_to_id[i][j] if i < len(self.encoding_name_to_id) and j in self.encoding_name_to_id[i].keys()
                     else 0
                     for i, j in zip(range(len(x)), x)]
     
