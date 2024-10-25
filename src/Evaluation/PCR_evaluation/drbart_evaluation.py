@@ -17,8 +17,9 @@ class SampleOutcomes_DRBART_PCR_A_S(SampleOutcomes_DRBART_PCR):
                                         ],
                                         [seconds_in_day])[1][0]
         if sampled_time < 0:
-            print('less than zero')
-            return sampled_time
+            #print('less than zero')
+            #return sampled_time
+            return 0
             return self.sample_duration(seconds_in_day, resource, concept_name, resource_count, activity_count, day_of_week)
         else:
             return sampled_time

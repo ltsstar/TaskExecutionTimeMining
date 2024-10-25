@@ -6,11 +6,17 @@ from pix_framework.statistics.distribution import DurationDistribution, get_best
 from event_log_transformer import TransformEventLog
 
 class DumasModel:
-    def __init__(self, event_log):
+    def __init__(self, event_log, types=['schedule', 'start', 'suspend'],
+                 resource=True):
         self.min_n = 15
         self.event_log = event_log
-        self.parse_event_log()
-        self.set_up_models()
+        self.types = types
+        self.resource = resource
+        #self.parse_event_log()
+        #self.set_up_models()
+        self.schedule_start_models = None
+        self.start_suspend_models = None
+        self.suspend_resume_models = None
 
     def sample_action(self, action, concept, resource):
         if action == 'schedule':
@@ -24,48 +30,57 @@ class DumasModel:
                                      concept, resource)
 
     def sample_model(self, general_model, models, concept, resource):
-        if (concept, resource) in models:
+        if models and (concept, resource) in models:
             return models[(concept, resource)].generate_sample(1)[0]
         else:
             return general_model.generate_sample(1)[0]
 
     def parse_event_log(self):
-        self.schedule_start_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
-                                                                    start_name_1='schedule',
-                                                                    complete_name_1 = 'start',
-                                                                    complete_name_2 = 'ate_abort',
-                                                                    complete_name_3 = 'pi_abort',
-                                                                   start_name_gen='_schedule',
-                                                                   complete_name_gen='_start')
+        if 'schedule' in self.types:
+            self.schedule_start_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
+                                                                        start_name_1='schedule',
+                                                                        complete_name_1 = 'start',
+                                                                        complete_name_2 = 'ate_abort',
+                                                                        complete_name_3 = 'pi_abort',
+                                                                    start_name_gen='_schedule',
+                                                                    complete_name_gen='_start')
 
-        self.start_suspend_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
-                                                                            start_name_1='start',
-                                                                            start_name_2='resume',
-                                                                            complete_name_1 = 'suspend',
-                                                                            complete_name_2 = 'ate_abort',
-                                                                            complete_name_3 = 'complete',
-                                                                        start_name_gen='_start',
-                                                                        complete_name_gen='_suspend')
+        if 'start' in self.types:
+            self.start_suspend_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
+                                                                                start_name_1='start',
+                                                                                start_name_2='resume',
+                                                                                complete_name_1 = 'suspend',
+                                                                                complete_name_2 = 'ate_abort',
+                                                                                complete_name_3 = 'complete',
+                                                                            start_name_gen='_start',
+                                                                            complete_name_gen='_complete')
 
-        self.suspend_resume_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
-                                                                            start_name_1='suspend',
-                                                                            complete_name_1 = 'resume',
-                                                                            complete_name_2 = 'ate_abort',
-                                                                            complete_name_3 = 'complete',
-                                                                        start_name_gen='_suspend',
-                                                                        complete_name_gen='_resume')
+        if 'suspend' in self.types:
+            self.suspend_resume_event_log = TransformEventLog.start_end_event_log_mult(self.event_log.copy(),
+                                                                                start_name_1='suspend',
+                                                                                complete_name_1 = 'resume',
+                                                                                complete_name_2 = 'ate_abort',
+                                                                                complete_name_3 = 'complete',
+                                                                            start_name_gen='_suspend',
+                                                                            complete_name_gen='_resume')
 
     def set_up_models(self):
-        self.general_schedule_start_model = self.get_general_model(self.schedule_start_event_log)
-        self.general_start_suspend_model = self.get_general_model(self.start_suspend_event_log)
-        self.general_suspend_resume_model = self.get_general_model(self.suspend_resume_event_log)
-
-        self.schedule_start_models = self.get_concept_resource_model(self.schedule_start_event_log,
-                                                                     '_start')
-        self.start_suspend_models = self.get_concept_resource_model(self.start_suspend_event_log,
-                                                                    '_suspend')
-        self.suspend_resume_models = self.get_concept_resource_model(self.suspend_resume_event_log,
-                                                                     '_resume')
+        if 'schedule' in self.types:
+            self.general_schedule_start_model = self.get_general_model(self.schedule_start_event_log)
+            if self.resource:
+                self.schedule_start_models = self.get_concept_resource_model(self.schedule_start_event_log,
+                                                                        '_start')
+        if 'start' in self.types:
+            self.general_start_suspend_model = self.get_general_model(self.start_suspend_event_log)
+            if self.resource:
+                self.start_suspend_models = self.get_concept_resource_model(self.start_suspend_event_log,
+                                                                        '_complete')
+            
+        if 'suspend' in self.types:
+            self.general_suspend_resume_model = self.get_general_model(self.suspend_resume_event_log)
+            if self.resource:
+                self.suspend_resume_models = self.get_concept_resource_model(self.suspend_resume_event_log,
+                                                                            '_resume')
 
     def get_general_model(self, start_end_event_log):
         return get_best_fitting_distribution(start_end_event_log['duration_seconds'])
