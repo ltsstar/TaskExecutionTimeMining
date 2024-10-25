@@ -6,7 +6,7 @@ for subdir in ./*/; do
 	if [ -d "$subdir" ]; then
 		cd $subdir
 		screen -S "$current_dir.$i" -d -m bash
-		screen -r "$current_dir.$i" -X stuff "./train.sh"$(echo -ne '\015')
+		screen -r "$current_dir.$i" -X stuff "./train_screen.sh"$(echo -ne '\015')
 		cd ..
 		echo "Processing directory: $subdir"
 		((i++))
