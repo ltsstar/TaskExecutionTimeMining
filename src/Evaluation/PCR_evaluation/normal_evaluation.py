@@ -42,6 +42,8 @@ class SampleOutcomes_PCR(SampleOutcomes):
             prev_finish_dt = datetime.datetime.fromtimestamp(prev_finish_ts)
             seconds_in_day = get_seconds_in_day(prev_finish_dt)
             day_of_week = get_seconds_in_day(prev_finish_dt)
+            activity_count[event_name] += 1
+            
             duration = self.sample_duration(seconds_in_day = seconds_in_day,
                                             resource = None,
                                             concept_name = event_name,
@@ -58,7 +60,7 @@ class SampleOutcomes_PCR(SampleOutcomes):
         return finish_time
 
 
-    def sample_case(self, case_name):
-        case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
+    def sample_case(self, case_log):
+        #case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
         start_time = case_log['time:timestamp_start'].min().timestamp()
         return self.sample_end_time(case_log, start_time)

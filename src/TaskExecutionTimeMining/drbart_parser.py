@@ -13,6 +13,19 @@ class Parser:
         self.encoding_file = open(dir + 'encoding.json')
         self.strict = strict
 
+    def close_files(self):
+        self.f_dr_bart_mean.close()
+        del self.f_dr_bart_mean
+        self.f_dr_bart_prec.close()
+        del self.f_dr_bart_prec
+        self.ucut_file.close()
+        del self.ucut_file
+        self.phistar_file.close()
+        del self.phistar_file
+        self.encoding_file.close()
+        del self.encoding_file
+
+    
     def parse_variables(self, f):
         number_variables = int(f.readline())
         variable_items = collections.defaultdict(list)
@@ -191,6 +204,7 @@ class DRBART:
         self.phi_star = self.parser.parse_phistar()
         self.ucuts = self.parser.parse_ucuts()
         self.parser.parse_encoding()
+        self.parser.close_files()
         self.all_trees = AllTrees(self.mean_trees, self.prec_trees)
         
 
@@ -261,7 +275,8 @@ class DRBART:
 
         res = []
         for i in range(n):
-            selected_it = np.random.choice(np.arange(len(self.phi_star)), size=1, p=np.array(self.phi_star) / np.sum(self.phi_star))[0]
+            #selected_it = np.random.choice(np.arange(len(self.phi_star)), size=1, p=np.array(self.phi_star) / np.sum(self.phi_star))[0]
+            selected_it = np.random.randint(0, len(self.all_trees.mean_trees))
 
             pr = [np.exp(lp) for lp in logprobs]
             m = np.random.choice(mids[selected_it], size=1, p=pr[selected_it])[0]
