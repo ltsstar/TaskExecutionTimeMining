@@ -11,6 +11,8 @@ pot = "*"
 typing-extensions = "*"
 nbconvert = "*"
 pix-framework = "*"
+pysqlite3 = "*"
+crps = "*"
 
 [dev-packages]
 
