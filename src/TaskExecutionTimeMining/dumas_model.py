@@ -6,6 +6,75 @@ from pix_framework.statistics.distribution import DurationDistribution, get_best
 from event_log_transformer import TransformEventLog
 
 class DumasModel:
+    def __init__(self, event_log, resource=True,
+                  concept_name = 'concept:name_start',
+                  resource_name = 'org:resource'):
+        self.min_n = 15
+        self.event_log = event_log
+        self.resource = resource
+        self.concept_name = concept_name
+        self.resource_name = resource_name
+
+    def sample(self, concept, resource):
+        if self.resource:
+            if self.resource_models and (concept, resource) in self.resource_models:
+                return self.resource_models[(concept, resource)].generate_sample(1)[0]
+            elif concept in self.concept_models:
+                return self.concept_models[concept].generate_sample(1)[0]
+            else:
+                return self.general_model.generate_sample(1)[0]
+        else:
+            if concept in self.concept_models:
+                return self.concept_models[concept].generate_sample(1)[0]
+            else:
+                return self.general_model.generate_sample(1)[0]
+
+    def get_general_model(self, start_end_event_log):
+        return get_best_fitting_distribution(start_end_event_log['duration_seconds'])
+
+
+    def get_differentiated_durations(self, start_end_event_log, concept, resource):
+        el = start_end_event_log[(start_end_event_log[self.concept_name] == concept) &
+                                 (start_end_event_log[self.resource_name] == resource)]
+        return el['duration_seconds']  
+
+    def get_concept_resource_model(self, start_end_event_log):
+        models = dict()
+        concepts = start_end_event_log[self.concept_name].unique()
+        resources = start_end_event_log[self.resource_name].unique()
+        
+        for concept, resource in itertools.product(concepts, resources):
+            differentiated_durations = self.get_differentiated_durations(start_end_event_log, concept, resource)
+            if len(differentiated_durations) >= self.min_n:
+                model = get_best_fitting_distribution(differentiated_durations)
+                if model.type != DistributionType.FIXED:
+                    models[(concept, resource)] = model
+        return models
+
+    def get_concept_durations(self, start_end_event_log, concept):
+        el = start_end_event_log[start_end_event_log[self.concept_name] == concept]
+        return el['duration_seconds']  
+
+    def get_concept_model(self, start_end_event_log):
+        models = dict()
+        concepts = start_end_event_log[self.concept_name].unique()
+        
+        for concept in concepts:
+            differentiated_durations = self.get_concept_durations(start_end_event_log, concept)
+            if len(differentiated_durations) >= self.min_n:
+                model = get_best_fitting_distribution(differentiated_durations)
+                if model.type != DistributionType.FIXED:
+                    models[concept] = model
+        return models
+
+    def set_up_models(self):
+        self.general_model = self.get_general_model(self.event_log)
+        self.concept_models = self.get_concept_model(self.event_log)
+        if self.resource:
+            self.resource_models = self.get_concept_resource_model(self.event_log)
+
+
+class DumasModelLifeCycle:
     def __init__(self, event_log, types=['schedule', 'start', 'suspend'],
                  resource=True):
         self.min_n = 15

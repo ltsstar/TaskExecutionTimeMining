@@ -8,14 +8,22 @@ from evaluation import *
 
 
 class SampleOutcomes_Normal(SampleOutcomes):
-    def __init__(self, event_log, resources=True):
+    def __init__(self, event_log, resources=True,
+                    activity_key='concept:name_start',
+                    case_id_key='case:concept:name',
+                    resource_key='org:resource_start',
+                    timestamp_key='time:timestamp_start'):
         super().__init__(event_log)
         self.resources = resources
+        self.activity_key = activity_key
+        self.case_id_key = case_id_key
+        self.resource_key = resource_key
+        self.timestamp_key = timestamp_key
 
-    def sample_end_time(self, case_log, start_time, net, im):
-        get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
+    def sample_end_time(self, case_log, start_time):
+        #get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
 
-        marking = im
+        #marking = im
         current_time = start_time
         finish_time = dict()
 
@@ -23,22 +31,21 @@ class SampleOutcomes_Normal(SampleOutcomes):
         activity_count = collections.defaultdict(int)
         resource_count = collections.defaultdict(int)
 
-        while get_enabled_tasks(marking):
-            pn_task = get_enabled_tasks(marking)[0]
-            task = pn_task.label
-            row = case_log[case_log['concept:name'] == task].iloc[0]
+        for index, current_event in case_log.iterrows():
+            #pn_task = get_enabled_tasks(marking)[0]
+            #row = case_log[case_log[self.activity_key] == task].iloc[0]
             
-            seconds_in_day = row['seconds_in_day']
+            seconds_in_day = current_event['seconds_in_day']
             if self.resources:
-                resource = row['org:resource']
+                resource = current_event[self.resource_key]
             else:
                 resource = None
-            concept_name = row['concept:name']
+            concept_name = current_event[self.activity_key]
 
             # feature encoding : aggregation encoding
-            activity_count[row['concept:name']] += 1
+            activity_count[current_event[self.activity_key]] += 1
             if self.resources:
-                resource_count[row['org:resource']] += 1
+                resource_count[current_event[self.resource_key]] += 1
             else:
                 resource_count = None
 
@@ -46,9 +53,7 @@ class SampleOutcomes_Normal(SampleOutcomes):
             current_time_ts = datetime.datetime.fromtimestamp(current_time)
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
             day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()
-            
-            print(concept_name, seconds_in_day)
-           
+                       
             finish_time = self.sample_duration(seconds_in_day = seconds_in_day,
                                                resource = resource,
                                                concept_name = concept_name,
@@ -56,20 +61,20 @@ class SampleOutcomes_Normal(SampleOutcomes):
                                                activity_count = activity_count,
                                                day_of_week = day_of_week
                                               )
-            print(task, finish_time)
+            
             current_time += finish_time
-            marking = semantics.execute(pn_task, net, marking)
+            #marking = semantics.execute(pn_task, net, marking)
 
         #print('total:', current_time)
         #print('---------')
         return current_time
 
 
-    def sample_case(self, case_name):
-        case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
-        net, im, fm = pm4py.discover_petri_net_inductive(case_log,
-                                                        activity_key='concept:name',
-                                                        case_id_key='case:concept:name',
-                                                        timestamp_key='time:timestamp')
-        start_time = case_log['time:timestamp'].min().timestamp()
-        return self.sample_end_time(case_log, start_time, net, im)
+    def sample_case(self, case_log):
+        #case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
+        #net, im, fm = pm4py.discover_petri_net_inductive(case_log,
+        #                                                activity_key=self.activity_key,
+        #                                                case_id_key=self.case_id_key,
+        #                                                timestamp_key=self.timestamp_key)
+        start_time = case_log[self.timestamp_key].min().timestamp()
+        return self.sample_end_time(case_log, start_time)

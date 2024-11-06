@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from enum import Enum
 import numpy as np
 import random
@@ -330,9 +332,10 @@ class PrintLogger:
         pass
 
 class PandasLogger:
-    def __init__(self):
+    def __init__(self, out_file):
         self.data = []
         self.start_time = datetime(2020, 1, 1)
+        self.out_file = out_file
 
     def log(self, event):
         if event.type == EventType.ACTIVITY_START:
@@ -351,13 +354,14 @@ class XESLogger(PandasLogger):
         # Convert DataFrame to Event Log
         log = log_converter.apply(self.df, variant=log_converter.Variants.TO_EVENT_LOG)
         # Export to XES
-        pm4py.write_xes(log, 'event_log.xes')
+        pm4py.write_xes(log, self.out_file)
 
 
 class XESLifeCycleLogger:
-    def __init__(self):
+    def __init__(self, out_file='event_log.xes'):
         self.data = []
         self.start_time = datetime(2020, 1, 1)
+        self.out_file = out_file
 
     def log(self, event):
         if event.type in [EventType.ACTIVITY_ACTIVATE, EventType.ACTIVITY_START, EventType.ACTIVITY_COMPLETE]:
@@ -372,13 +376,17 @@ class XESLifeCycleLogger:
         # Convert DataFrame to Event Log
         log = log_converter.apply(self.df, variant=log_converter.Variants.TO_EVENT_LOG)
         # Export to XES
-        pm4py.write_xes(log, 'event_log_2.xes')
+        pm4py.write_xes(log, self.out_file)
 
 class CSVLogger(PandasLogger):
+    def __init__(self, out_file='event_log.csv'):
+        super().__init__(out_file)
+
     def finish(self):
         super().finish()
-        self.df.to_csv('event_log.csv', index=False)
+        self.df.to_csv(self.out_file, index=False)
 
 if __name__ == '__main__':
-    simulator = ProcessSimulator(logger=XESLifeCycleLogger())
-    simulator.simulate(24*365*5)
+    #simulator = ProcessSimulator(logger=CSVLogger('test_log.csv'))
+    simulator = ProcessSimulator(logger=XESLifeCycleLogger('test_log.xes'))
+    simulator.simulate(24*365*5/2)
