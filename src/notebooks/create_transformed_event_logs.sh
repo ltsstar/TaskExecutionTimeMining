@@ -1,8 +1,11 @@
 #!/bin/bash
 cd Artificial_Example
-jupyter nbconvert --to python Artificial_event_log_transformer.ipynb
-python Artificial_event_log_transformer.py
-rm Artificial_event_log_transformer.py
+jupyter nbconvert --to python Artificial_event_log_transformer_train.ipynb
+python Artificial_event_log_transformer_train.py
+rm Artificial_event_log_transformer_train.py
+jupyter nbconvert --to python Artificial_event_log_transformer_test.ipynb
+python Artificial_event_log_transformer_test.py
+rm Artificial_event_log_transformer_test.py
 cd ..
 
 cd BPIC_2017
