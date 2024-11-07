@@ -37,7 +37,11 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
             print(concept_name)
             return 0
         else:
+<<<<<<< Updated upstream
             print(categorical_variables, continuous_variables, sampled_time)
+=======
+            #print(categorical_variables, continuous_variables, sampled_time)
+>>>>>>> Stashed changes
             return sampled_time
 
 
