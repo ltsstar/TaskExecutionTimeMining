@@ -94,19 +94,21 @@ class ConductEvaluation:
         cases = self.event_log['case:concept:name'].unique()
         results = dict()
 
-        #prepare case data
-        case_data = dict([(case_name, self.get_case_data(case_name)) for case_name in cases])
-
         if multiprocessing:
+            #prepare case data
+            case_data = dict([(case_name, self.get_case_data(case_name)) for case_name in cases])
+
             with Pool(processes=96) as pool:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
                 sample_results = list(tqdm(pool.imap(func, [c[1] for c in case_data.values()]), total=len(cases)))
         else:
+            case_data = dict()
             sample_results = []
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
-            for c in tqdm(case_data.values()):
-                r = func(c[1])
+            for c in tqdm(cases):
+                case_data[c] = self.get_case_data(c)
+                r = func(case_data[c][1])
                 sample_results.append(r)
                 
 
