@@ -12,7 +12,8 @@ class SampleOutcomes_Normal(SampleOutcomes):
                     activity_key='concept:name_start',
                     case_id_key='case:concept:name',
                     resource_key='org:resource_start',
-                    timestamp_key='time:timestamp_start'):
+                    timestamp_key='time:timestamp_start',
+                **kwargs):
         super().__init__(event_log)
         self.resources = resources
         self.activity_key = activity_key
