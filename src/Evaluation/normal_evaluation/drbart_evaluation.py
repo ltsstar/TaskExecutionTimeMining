@@ -140,8 +140,30 @@ class SampleOutcomes_DRBART_Normal_R_A_S_RC_AC(SampleOutcomes_DRBART_Normal):
 
 """
 concept-name_resource_seconds-in-day_activity-count_resource_count_amount
-BPIC 2017
 """
+class SampleOutcomes_DRBART_Normal_A_R_S_RC_AC_V(SampleOutcomes_DRBART_Normal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.categorical_args =  ['concept_name', 'resource',
+                                  '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)',
+                                  '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
+                                 ]
+        self.continuous_args = ['seconds_in_day', kwargs['amount']]
+        self.known_activities = kwargs['known_activities']
+        self.known_resources = kwargs['known_resources']
+
+
+class SampleOutcomes_DRBART_Normal_R_A_S_RC_AC_V(SampleOutcomes_DRBART_Normal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.categorical_args =  ['resource', 'concept_name',
+                                  '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)',
+                                  '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
+                                 ]
+        self.continuous_args = ['seconds_in_day', kwargs['amount']]
+        self.known_activities = kwargs['known_activities']
+        self.known_resources = kwargs['known_resources']
+
 
 """
 concept-name_resource_seconds-in-day_day-of-week
@@ -186,7 +208,7 @@ class SampleOutcomes_DRBART_Normal_R_A_S_D_RC_AC(SampleOutcomes_DRBART_Normal):
                                  ]
         self.continuous_args = ['seconds_in_day']
         self.known_activities = known_activities
-        self.known_resources = known_resources  
+        self.known_resources = known_resources
 
 
 """
