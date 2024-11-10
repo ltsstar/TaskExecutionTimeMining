@@ -270,22 +270,21 @@ class DRBART:
         return res
 
     def sample_enc(self, x : list, n : int):
-        logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in self.ucuts ]
+        #logprobs = [np.log(np.diff(np.array([0] + ucuts_i + [1]))) for ucuts_i in self.ucuts ]
         mids = [np.array([0] + ucuts_i) + np.diff(np.array([0] + ucuts_i + [1])) / 2 for ucuts_i in self.ucuts]
-
         res = []
         for i in range(n):
-            #selected_it = np.random.choice(np.arange(len(self.phi_star)), size=1, p=np.array(self.phi_star) / np.sum(self.phi_star))[0]
             selected_it = np.random.randint(0, len(self.all_trees.mean_trees))
+            #selected_it = np.random.choice(np.arange(len(self.phi_star)), size=1, p=np.array(self.phi_star) / np.sum(self.phi_star))[0]
 
-            pr = [np.exp(lp) for lp in logprobs]
-            m = np.random.choice(mids[selected_it], size=1, p=pr[selected_it])[0]
+            #pr = [np.exp(lp) for lp in logprobs]
+            #print(pr)
+            m = np.random.choice(mids[selected_it], size=1)[0]#, p=pr[selected_it])[0]
             des = [m] + x
-
+            #print(des)
             mean = self.all_trees.mean_trees[selected_it].fit_i(des)
             prec = self.all_trees.prec_trees[selected_it].fit_i_mult(des)
             prec_2 = 1 / math.sqrt(prec)
-
             r = np.random.normal(loc = mean, scale = prec_2)
             res.append(r)
         return res
