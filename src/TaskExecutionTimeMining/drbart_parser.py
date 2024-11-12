@@ -95,12 +95,29 @@ class Parser:
         return self.encoding_name_to_id, self.encoding_id_to_name
     
     def get_encoding(self, x : list):
-         if self.strict:
+        if self.strict:
             return [self.encoding_name_to_id[i][j] for i, j in zip(range(len(x)), x)]
-         else:
-            return [self.encoding_name_to_id[i][j] if i < len(self.encoding_name_to_id) and j in self.encoding_name_to_id[i].keys()
-                    else 0
-                    for i, j in zip(range(len(x)), x)]
+        else:
+            res = []
+            for value_pos, value_name in zip(range(len(x)), x):
+                if value_name in self.encoding_name_to_id[value_pos].keys():
+                    # if value is known at position: take encoding
+                    res.append(self.encoding_name_to_id[value_pos][value_name])
+                elif all([isinstance(el, int) or el.isdigit() for el in self.encoding_name_to_id[value_pos]]):
+                    # if all values are integer then take max integer
+                    max_val = max([int(k) for k in self.encoding_name_to_id[value_pos].keys()])
+                    res.append(self.encoding_name_to_id[value_pos][max_val])
+                else:
+                    # value is e.g. unknown resource / activity: take random one
+                    random_val = np.random.choice(list(self.encoding_name_to_id[value_pos].keys()))
+                    res.append(self.encoding_name_to_id[value_pos][random_val])
+            return res
+            #return [self.encoding_name_to_id[value_pos][value_name] if value_name in self.encoding_name_to_id[value_pos].keys() else
+            #        self.encoding_name_to_id[value_pos][max([int(k) for k in self.encoding_name_to_id[value_pos].keys()])]
+            #        for value_pos, value_name in zip(range(len(x)), x)]
+            #return [self.encoding_name_to_id[i][j] if i < len(self.encoding_name_to_id) and j in self.encoding_name_to_id[i].keys()
+            #        else 0
+            #        for i, j in zip(range(len(x)), x)]
     
     def get_encodings(self, x : list[list]):
         return [self.get_encoding(x_row) for x_row in x]
