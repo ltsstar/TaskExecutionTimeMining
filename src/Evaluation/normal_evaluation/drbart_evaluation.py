@@ -33,8 +33,8 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
             if sampled_time > 0:
                 break
         if sampled_time < 0:
-            print('warning sample time below 0:', sampled_time)
-            print(concept_name)
+            #print('warning sample time below 0:', sampled_time)
+            #print(concept_name)
             return 0
         else:
             #print(categorical_variables, continuous_variables, sampled_time)
@@ -227,7 +227,7 @@ class SampleOutcomes_DRBART_Normal_A_R_S_RC(SampleOutcomes_DRBART_Normal):
 class SampleOutcomes_DRBART_Normal_R_A_S_RC(SampleOutcomes_DRBART_Normal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.categorical_args =  ['resource', 'concept_name'
+        self.categorical_args =  ['resource', 'concept_name',
                                   '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)'
                                  ]
         self.continuous_args = ['seconds_in_day']
