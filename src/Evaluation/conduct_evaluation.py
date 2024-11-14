@@ -18,10 +18,12 @@ class ConductEvaluation:
                  sample_model_type,
                  sample_model_kwargs,
                  event_log,
-                 n=1000):
+                 n=1000,
+                 n_processes=10):
         self.sample_model = sample_model_type(event_log, trained_model, **sample_model_kwargs)
         self.event_log = event_log
         self.n = n
+        self.n_processes = n_processes
 
 
     def _sample_case_from_model(self, case_log):
@@ -98,7 +100,7 @@ class ConductEvaluation:
             #prepare case data
             case_data = dict([(case_name, self.get_case_data(case_name)) for case_name in cases])
 
-            with Pool(processes=96) as pool:
+            with Pool(processes=self.n_processes) as pool:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
                 sample_results = list(tqdm(pool.imap(func, [c[1] for c in case_data.values()]), total=len(cases)))
