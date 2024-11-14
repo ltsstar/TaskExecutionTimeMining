@@ -29,17 +29,23 @@ class ConductEvaluation:
     def _sample_case_from_model(self, case_log):
         pass
 
-    def _get_kde_from_samples(self, samples, ground_truth):
+    @staticmethod
+    def _get_kde_from_samples(samples, ground_truth):
         #kde = gaussian_kde(samples).pdf(ground_truth)[0]
         k = lambda x, h : (Decimal(1) / (Decimal(h) * Decimal(numpy.sqrt(2 * numpy.pi)))) * Decimal(numpy.e)**(Decimal(-0.5) * (Decimal(x) / Decimal(h))**Decimal(2))
         
         iqr = numpy.percentile(samples, 75) - numpy.percentile(samples, 25)
         h = 0.9 * min(numpy.std(samples), iqr/1.34) * len(samples)**(-1/5) # silverman rule
-        if iqr == 0 or h== 0:
-            print(samples)
-            print(ground_truth)
+        #h = 1800**2
+        #if iqr == 0 or h== 0:
+        #    print(samples)
+        #    print(ground_truth)
         kde = Decimal(1)/Decimal(len(samples)) * sum([k(ground_truth - sample, h) for sample in samples]) 
-        return kde
+        return kde*24*3600
+
+    @staticmethod
+    def _get_kde_from_samples_args(args):
+        return ConductEvaluation._get_kde_from_samples(args[0], args[1])
     
     def _get_real_start_time(self, case_log):
         start_time = case_log['time:timestamp_start'].min().timestamp()
@@ -104,18 +110,27 @@ class ConductEvaluation:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
                 sample_results = list(tqdm(pool.imap(func, [c[1] for c in case_data.values()]), total=len(cases)))
+
+            with Pool(processes=self.n_processes) as pool:
+                #func = lambda i, c : self.__get_kde_from_samples(sample_results[i], case_data[c][3])
+                rr = list(tqdm(pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)]), total=len(case_data)))
+                return_results = dict([(c, rr[i]) for i, c in enumerate(case_data)])
+                #return_results = dict([(c, self._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)])
         else:
             case_data = dict()
             sample_results = []
+            return_results = dict()
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
             for c in tqdm(cases):
                 case_data[c] = self.get_case_data(c)
                 r = func(case_data[c][1])
                 sample_results.append(r)
-                
+                kde = ConductEvaluation._get_kde_from_samples(r, case_data[c][3])
+                kde2 = gaussian_kde(r).pdf(case_data[c][3])[0]
+                if plot_cases:
+                    print(c, kde, kde2, kde.ln(), numpy.log(kde2))
+                    self._plot_case(r, case_data[c][2], case_data[c][3])
+                return_results[c] = kde
+            #return_results = dict([(c, ConductEvaluation._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)]) 
 
-        #if plot_cases:
-        #    for r in results:
-        #        self._plot_case(r[0], r[1], r[2])
-        return_results = dict([(c, self._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)])
         return return_results, sample_results, case_data
