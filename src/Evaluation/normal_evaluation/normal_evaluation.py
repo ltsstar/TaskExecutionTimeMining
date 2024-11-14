@@ -50,6 +50,12 @@ class SampleOutcomes_Normal(SampleOutcomes):
             else:
                 resource_count = None
 
+            # it can happen that unrealistically high values get sampled
+            # this causes problems with the conversion to datetime
+            # therefore return
+            if current_time > datetime.datetime(3000, 1, 1).timestamp():
+                return current_time
+
             # feature engineering
             current_time_ts = datetime.datetime.fromtimestamp(current_time)
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
