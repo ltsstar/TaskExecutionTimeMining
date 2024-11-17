@@ -13,6 +13,7 @@ class SampleOutcomes_Normal(SampleOutcomes):
                     case_id_key='case:concept:name',
                     resource_key='org:resource_start',
                     timestamp_key='time:timestamp_start',
+                    value_key=None,
                 **kwargs):
         super().__init__(event_log)
         self.resources = resources
@@ -20,6 +21,7 @@ class SampleOutcomes_Normal(SampleOutcomes):
         self.case_id_key = case_id_key
         self.resource_key = resource_key
         self.timestamp_key = timestamp_key
+        self.value_key = value_key
 
     def sample_end_time(self, case_log, start_time):
         #get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
@@ -35,6 +37,11 @@ class SampleOutcomes_Normal(SampleOutcomes):
         for index, current_event in case_log.iterrows():
             #pn_task = get_enabled_tasks(marking)[0]
             #row = case_log[case_log[self.activity_key] == task].iloc[0]
+
+            if self.value_key:
+                value = current_event[self.value_key]
+            else:
+                value = None
             
             seconds_in_day = current_event['seconds_in_day']
             if self.resources:
@@ -66,7 +73,8 @@ class SampleOutcomes_Normal(SampleOutcomes):
                                                concept_name = concept_name,
                                                resource_count = resource_count,
                                                activity_count = activity_count,
-                                               day_of_week = day_of_week
+                                               day_of_week = day_of_week,
+                                               value = value
                                               )
             
             current_time += finish_time

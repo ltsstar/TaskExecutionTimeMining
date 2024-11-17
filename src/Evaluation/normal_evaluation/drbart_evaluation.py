@@ -11,7 +11,8 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
         self.continuous_args = []
 
     def sample_duration(self, seconds_in_day, resource, concept_name,
-                        resource_count, activity_count, day_of_week):
+                        resource_count, activity_count, day_of_week,
+                        value):
 
         continuous_variables = list()
         for cv in self.continuous_args:
@@ -148,7 +149,7 @@ class SampleOutcomes_DRBART_Normal_A_R_S_RC_AC_V(SampleOutcomes_DRBART_Normal):
                                   '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)',
                                   '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
                                  ]
-        self.continuous_args = ['seconds_in_day', kwargs['amount']]
+        self.continuous_args = ['seconds_in_day', 'value']
         self.known_activities = kwargs['known_activities']
         self.known_resources = kwargs['known_resources']
 
@@ -160,7 +161,7 @@ class SampleOutcomes_DRBART_Normal_R_A_S_RC_AC_V(SampleOutcomes_DRBART_Normal):
                                   '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)',
                                   '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
                                  ]
-        self.continuous_args = ['seconds_in_day', kwargs['amount']]
+        self.continuous_args = ['seconds_in_day', 'value']
         self.known_activities = kwargs['known_activities']
         self.known_resources = kwargs['known_resources']
 
@@ -194,8 +195,8 @@ class SampleOutcomes_DRBART_Normal_A_R_S_D_RC_AC(SampleOutcomes_DRBART_Normal):
                                   '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
                                  ]
         self.continuous_args = ['seconds_in_day']
-        self.known_activities = known_activities
-        self.known_resources = known_resources  
+        self.known_activities = kwargs['known_activities']
+        self.known_resources = kwargs['known_resources']
 
 
 class SampleOutcomes_DRBART_Normal_R_A_S_D_RC_AC(SampleOutcomes_DRBART_Normal):
@@ -207,8 +208,8 @@ class SampleOutcomes_DRBART_Normal_R_A_S_D_RC_AC(SampleOutcomes_DRBART_Normal):
                                   '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)'
                                  ]
         self.continuous_args = ['seconds_in_day']
-        self.known_activities = known_activities
-        self.known_resources = known_resources
+        self.known_activities = kwargs['known_activities']
+        self.known_resources = kwargs['known_resources']
 
 
 """
