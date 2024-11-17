@@ -9,7 +9,7 @@ class SampleOutcomes_Dumas_Normal(SampleOutcomes_Normal):
 
     def sample_duration(self, seconds_in_day, resource, concept_name,
                                    resource_count, activity_count,
-                                   day_of_week):
+                                   day_of_week, value):
         sample_time = lambda : self.dm.sample(concept_name, resource)
         for i in range(self.max_sample):
             sampled_time = sample_time()
