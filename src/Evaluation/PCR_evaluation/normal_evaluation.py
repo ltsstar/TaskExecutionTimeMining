@@ -8,7 +8,9 @@ from evaluation import *
 
 
 class SampleOutcomes_PCR(SampleOutcomes):
-    def __init__(self, event_log, resources=True):
+    def __init__(self, event_log,
+                 resources=True,
+                **kwargs):
         super().__init__(event_log)
         self.resources = resources
 
@@ -41,7 +43,7 @@ class SampleOutcomes_PCR(SampleOutcomes):
 
             prev_finish_dt = datetime.datetime.fromtimestamp(prev_finish_ts)
             seconds_in_day = get_seconds_in_day(prev_finish_dt)
-            day_of_week = get_seconds_in_day(prev_finish_dt)
+            day_of_week = prev_finish_dt.weekday()
             activity_count[event_name] += 1
             
             duration = self.sample_duration(seconds_in_day = seconds_in_day,
