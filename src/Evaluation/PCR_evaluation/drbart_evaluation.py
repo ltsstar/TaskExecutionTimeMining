@@ -2,8 +2,9 @@ from functools import partial
 from PCR_evaluation.normal_evaluation import *
 
 class SampleOutcomes_DRBART_PCR(SampleOutcomes_PCR):
-    def __init__(self, case_event_log, drbart_model, resources=True, max_sample=10):
-        super().__init__(case_event_log, resources)
+    def __init__(self, case_event_log, drbart_model, resources=True,
+                 max_sample=10, **kwargs):
+        super().__init__(case_event_log, resources, **kwargs)
         self.drbart_model = drbart_model
         self.max_sample = max_sample
         self.categorical_args = []
@@ -56,7 +57,7 @@ class SampleOutcomes_DRBART_PCR_A_S(SampleOutcomes_DRBART_PCR):
 class SampleOutcomes_DRBART_PCR_A_S_AC(SampleOutcomes_DRBART_PCR):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.categorical_args =  ['concept_name', 'resource',
+        self.categorical_args =  ['concept_name',
                                   '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)']
         self.continuous_args = ['seconds_in_day']
         self.known_activities = kwargs['known_activities']
