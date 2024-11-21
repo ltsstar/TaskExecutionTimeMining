@@ -46,12 +46,14 @@ class ConductEvaluation:
     @staticmethod
     def _get_kde_from_samples_args(args):
         return ConductEvaluation._get_kde_from_samples(args[0], args[1])
-    
-    def _get_real_start_time(self, case_log):
+
+    @staticmethod
+    def _get_real_start_time(case_log):
         start_time = case_log['time:timestamp_start'].min().timestamp()
         return start_time
-    
-    def _get_real_end_time(self, case_log):
+
+    @staticmethod
+    def _get_real_end_time(case_log):
         end_time = case_log['time:timestamp_complete'].max().timestamp()
         return end_time
     
@@ -86,8 +88,15 @@ class ConductEvaluation:
 
     def get_case_data(self, case_name):
         case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
-        real_start_time_ts = self._get_real_start_time(case_log)
-        real_end_time_ts = self._get_real_end_time(case_log)
+        real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
+        real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
+        return (case_name, case_log, real_start_time_ts, real_end_time_ts)
+
+    @staticmethod
+    def get_case_data(event_log, case_name):
+        case_log = event_log[event_log['case:concept:name'] == case_name]
+        real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
+        real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
         return (case_name, case_log, real_start_time_ts, real_end_time_ts)
 
     def sample_case(self, case_log):
@@ -98,22 +107,39 @@ class ConductEvaluation:
     def sample_case_static(case_log, sample_model, n):
         return [sample_model.sample_case(case_log) for i in range(n)]
 
+    @staticmethod
+    def get_case_name_case_data(event_log, case_name):
+        return (case_name, ConductEvaluation.get_case_data(event_log, case_name))
+
     def sample_cases(self, plot_cases=False, multiprocessing=True):
         cases = self.event_log['case:concept:name'].unique()
         results = dict()
 
         if multiprocessing:
             #prepare case data
-            case_data = dict([(case_name, self.get_case_data(case_name)) for case_name in cases])
+            with Pool(processes=self.n_processes) as pool:
+                gcncd = partial(ConductEvaluation.get_case_name_case_data, self.event_log)
+                case_data = dict(tqdm(
+                    pool.imap(gcncd, list(cases), 500),
+                    total=len(cases)
+                ))
+                    
+            #[[gcncd(case_name) for case(case_name, self.get_case_data(case_name)) for case_name in cases])
 
             with Pool(processes=self.n_processes) as pool:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
-                sample_results = list(tqdm(pool.imap(func, [c[1] for c in case_data.values()]), total=len(cases)))
+                sample_results = list(tqdm(
+                    pool.imap(func, [c[1] for c in case_data.values()], 500),
+                    total=len(cases)
+                ))
 
             with Pool(processes=self.n_processes) as pool:
                 #func = lambda i, c : self.__get_kde_from_samples(sample_results[i], case_data[c][3])
-                rr = list(tqdm(pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)]), total=len(case_data)))
+                rr = list(tqdm(
+                    pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)], 500),
+                    total=len(case_data)
+                ))
                 return_results = dict([(c, rr[i]) for i, c in enumerate(case_data)])
                 #return_results = dict([(c, self._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)])
         else:
