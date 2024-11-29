@@ -8,9 +8,9 @@
 # Ignore all directories starting with ckpt in all directories
 **/ckpt*/
 
-**/*.json
+#**/*.json
 **/*.out
-**/dr_bart_mean.txt
-**/dr_bart_prec.txt
+#**/dr_bart_mean.txt
+#**/dr_bart_prec.txt
 **/coordinator
 **/coordinator_log.log
