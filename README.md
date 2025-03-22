@@ -1,7 +1,7 @@
 # TaskExecutionTimeMining
 
 This repo demonstrates the applicability of the probabilistic learner DR-BART in Business Process Simulation (BPS) models.
-DR-BART was proposed in [Orlandi et al. (2021)[https://doi.org/10.48550/arXiv.2112.12259].
+DR-BART was proposed in [Orlandi et al. (2021)](https://doi.org/10.48550/arXiv.2112.12259).
 
 The DR-BART implementation is written in R and C, while we use Python to implement our BPS model.
 Therefore, this repo provides a wrapper to use trained DR-BART models from the [implementation of Orlandi et al.](https://github.com/vittorioorlandi/drbart) in Python.
