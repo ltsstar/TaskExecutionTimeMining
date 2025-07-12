@@ -16,3 +16,5 @@
 **/coordinator_log.log
 
 **/*.pickle
+
+*/.ipynb_checkpoints/*
