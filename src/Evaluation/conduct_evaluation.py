@@ -148,7 +148,7 @@ class ConductEvaluation:
             return_results = dict()
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
             for c in tqdm(cases):
-                case_data[c] = self.get_case_data(c)
+                case_data[c] = ConductEvaluation.get_case_data(self.event_log, c)
                 r = func(case_data[c][1])
                 sample_results.append(r)
                 kde = ConductEvaluation._get_kde_from_samples(r, case_data[c][3])
