@@ -137,3 +137,16 @@ def MI_continuous_continuous(df, col, target_col='duration_seconds',
     if enable_tqdm:
         pbar.close()
     return mi
+
+def MI_discrete_discrete(df, col, target_col):
+    p_x = df[col].value_counts(normalize=True)
+    p_y = df[target_col].value_counts(normalize=True)
+    joint_counts = df.groupby([col, target_col]).size()
+    p_xy = joint_counts / len(df)
+
+    mi = 0.0
+    for (x, y), pxy in p_xy.items():
+        px = p_x[x]
+        py = p_y[y]
+        mi += pxy * np.log(pxy / (px * py))
+    return mi
