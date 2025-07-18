@@ -1,20 +1,20 @@
-# Ignore all files ending with .dmtcp in all directories
-**/*.dmtcp
+# Ignore everything by default
+*
 
-# Ignore all files starting with dmtcp in all directories
-**/dmtcp*
+# Don't ignore the .gitignore file itself
+!.gitignore
 
+# Unignore directories like 'advanced' and 'standard'
+!*/
 
-# Ignore all directories starting with ckpt in all directories
-**/ckpt*/
+# Unignore directories like 'bpic17' and 'helpdesk'
+!*/*/
 
-#**/*.json
-**/*.out
-#**/dr_bart_mean.txt
-#**/dr_bart_prec.txt
-**/coordinator
-**/coordinator_log.log
+# Unignore subfolders like 'concept-name' and 'concept-name_resource'
+!*/*/*/
 
-**/*.pickle
+# Unignore drbart_variable.r files directly under folders like 'concept-name'
+!/*/*/drbart_variable.r
 
-*/.ipynb_checkpoints/*
+# Explicitly ignore drbart_variable.r files deeper in the structure (e.g., inside '0', '1', etc.)
+!*/*/*/drbart_variable.r

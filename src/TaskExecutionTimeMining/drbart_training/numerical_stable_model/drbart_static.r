@@ -3,12 +3,15 @@
 #
 
 library(purrr)
-library(cleandata)
+#library(cleandata)
 library(devtools)
 library(jsonlite)
 # uses commit with 'numeric stability'
-devtools::install_github('ltsstar/drbart@c020ae44bbdcd11a72d08124a19f8dabd63b641b', ref = 'main')
-
+devtools::install_github('ltsstar/drbart@4a99bb83ddaba20489ffd326f13228e72c9d670c',
+                         ref = 'main',
+                         auth_token = Sys.getenv("GITHUB_PAT")
+)
+library(drbart)
 
 df <- read.csv(file_location)
 
@@ -52,17 +55,17 @@ enc3 <- lapply(x_values_continous, function(name){
 df_x <- df_xy[names(df_xy) != y_value]
 
 # log scale y and normalize
-raw_y <- df_xy[[y_value]]
-log_y <- log1p(raw_y)
-scaled_y <- scale(log_y, center = TRUE, scale = TRUE)
-y <- scaled_y[, 1]
+y <- df_xy[[y_value]]
+#log_y <- log1p(raw_y)
+#scaled_y <- scale(log_y, center = TRUE, scale = TRUE)
+#y <- scaled_y[, 1]
 
 #save normalization parameters
-mean_y <- attr(scaled_y, "scaled:center")
-sd_y <- attr(scaled_y, "scaled:scale")
-params <- list(mean = as.numeric(mean_y), sd = as.numeric(sd_y))
-write_json(params, path = "y_normalization_params.json",
-           pretty = TRUE, auto_unbox = TRUE)
+#mean_y <- attr(scaled_y, "scaled:center")
+#sd_y <- attr(scaled_y, "scaled:scale")
+#params <- list(mean = as.numeric(mean_y), sd = as.numeric(sd_y))
+#write_json(params, path = "y_normalization_params.json",
+#           pretty = TRUE, auto_unbox = TRUE)
 
 #ul <- unlist(df_x)
 ul <- purrr::flatten_dbl(df_x)

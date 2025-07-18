@@ -3,11 +3,12 @@
 #
 
 library(purrr)
-library(cleandata)
+#library(cleandata)
 library(devtools)
 library(jsonlite)
 # uses commit commit with 'big matrix support' but not yet with numerical stability
 devtools::install_github('ltsstar/drbart@5079e9cf5ed24a2eb374372d9da64e594d28f0bd', ref = 'main')
+library(drbart)
 
 
 df <- read.csv(file_location)

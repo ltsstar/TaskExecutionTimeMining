@@ -19,11 +19,13 @@ class ConductEvaluation:
                  sample_model_kwargs,
                  event_log,
                  n=1000,
-                 n_processes=10):
+                 n_processes=10,
+                 batch_size=100):
         self.sample_model = sample_model_type(event_log, trained_model, **sample_model_kwargs)
         self.event_log = event_log
         self.n = n
         self.n_processes = n_processes
+        self.batch_size = batch_size
 
 
     def _sample_case_from_model(self, case_log):
@@ -93,7 +95,7 @@ class ConductEvaluation:
         return (case_name, case_log, real_start_time_ts, real_end_time_ts)
 
     @staticmethod
-    def get_case_data(event_log, case_name):
+    def get_case_data_static(event_log, case_name):
         case_log = event_log[event_log['case:concept:name'] == case_name]
         real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
         real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
@@ -109,7 +111,7 @@ class ConductEvaluation:
 
     @staticmethod
     def get_case_name_case_data(event_log, case_name):
-        return (case_name, ConductEvaluation.get_case_data(event_log, case_name))
+        return (case_name, ConductEvaluation.get_case_data_static(event_log, case_name))
 
     def sample_cases(self, plot_cases=False, multiprocessing=True):
         cases = self.event_log['case:concept:name'].unique()
@@ -120,7 +122,7 @@ class ConductEvaluation:
             with Pool(processes=self.n_processes) as pool:
                 gcncd = partial(ConductEvaluation.get_case_name_case_data, self.event_log)
                 case_data = dict(tqdm(
-                    pool.imap(gcncd, list(cases), 500),
+                    pool.imap(gcncd, list(cases), self.batch_size),
                     total=len(cases)
                 ))
                     
@@ -130,14 +132,14 @@ class ConductEvaluation:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
                 sample_results = list(tqdm(
-                    pool.imap(func, [c[1] for c in case_data.values()], 500),
+                    pool.imap(func, [c[1] for c in case_data.values()], self.batch_size),
                     total=len(cases)
                 ))
 
             with Pool(processes=self.n_processes) as pool:
                 #func = lambda i, c : self.__get_kde_from_samples(sample_results[i], case_data[c][3])
                 rr = list(tqdm(
-                    pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)], 500),
+                    pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)], self.batch_size),
                     total=len(case_data)
                 ))
                 return_results = dict([(c, rr[i]) for i, c in enumerate(case_data)])

@@ -15,6 +15,7 @@ pysqlite3 = "*"
 crps = "*"
 statsmodels = "*"
 numba = "*"
+numpy = "*"
 
 [dev-packages]
 
