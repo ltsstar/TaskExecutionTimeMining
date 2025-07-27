@@ -125,6 +125,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                     break
             if real_finish_time >= self.max_sample_value:
                 print('sampled duration is still above limit!')
+                real_finish_time = self.max_sample_value
             current_time += real_finish_time
             #marking = semantics.execute(pn_task, net, marking)
 
