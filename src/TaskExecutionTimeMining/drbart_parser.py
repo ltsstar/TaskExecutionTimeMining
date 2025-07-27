@@ -301,6 +301,8 @@ class DRBART:
             #print(des)
             mean = self.all_trees.mean_trees[selected_it].fit_i(des)
             prec = self.all_trees.prec_trees[selected_it].fit_i_mult(des)
+            #clip prec to avoid numerical instabilities
+            prec = max(prec, 1e-8)
             prec_2 = 1 / math.sqrt(prec)
             r = np.random.normal(loc = mean, scale = prec_2)
             res.append(r)
