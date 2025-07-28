@@ -111,16 +111,21 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             drbart_model_id = self.identify_drbart_model(transformed_current_event)
             drbart_model = self.drbart_models[str(drbart_model_id)]
             for i in range(self.max_sample):
-                duration = self.sample_duration(drbart_model = drbart_model,
-                                                seconds_in_day = seconds_in_day,
-                                                resource = resource,
-                                                concept_name = concept_name,
-                                                resource_count = resource_count,
-                                                activity_count = activity_count,
-                                                day_of_week = day_of_week,
-                                                value = value
-                                                )
-                real_finish_time = self.reverse_transform_duration(duration)
+                try:
+                    duration = self.sample_duration(drbart_model = drbart_model,
+                                                    seconds_in_day = seconds_in_day,
+                                                    resource = resource,
+                                                    concept_name = concept_name,
+                                                    resource_count = resource_count,
+                                                    activity_count = activity_count,
+                                                    day_of_week = day_of_week,
+                                                    value = value
+                                                    )
+                    real_finish_time = self.reverse_transform_duration(duration)
+                except Exception as e:
+                    print('Case sampling error:', dict(current_event))
+                    real_finish_time = 0.0
+
                 if real_finish_time < self.max_sample_value:
                     break
             if real_finish_time >= self.max_sample_value:
