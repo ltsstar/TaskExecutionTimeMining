@@ -119,9 +119,13 @@ class ConductEvaluation:
 
         if multiprocessing:
             #prepare case data
-            case_data = dict()
-            for case_name in tqdm(cases):
-                    case_data[case_name] = self.get_case_data(case_name)
+            grouped = self.event_log.groupby('case:concept:name')
+
+            case_data = {}
+            for case_name, case_log in tqdm(grouped):
+                real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
+                real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
+                case_data[case_name] = (case_name, case_log, real_start_time_ts, real_end_time_ts)
                     
             with Pool(processes=self.n_processes) as pool:
                 # Use `imap` to track progress with tqdm
