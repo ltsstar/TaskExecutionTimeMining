@@ -119,15 +119,10 @@ class ConductEvaluation:
 
         if multiprocessing:
             #prepare case data
-            with Pool(processes=self.n_processes) as pool:
-                gcncd = partial(ConductEvaluation.get_case_name_case_data, self.event_log)
-                case_data = dict(tqdm(
-                    pool.imap(gcncd, list(cases), self.batch_size),
-                    total=len(cases)
-                ))
+            case_data = dict()
+            for case_name in tqdm(cases):
+                    case_data[case_name] = self.get_case_data(case_name)
                     
-            #[[gcncd(case_name) for case(case_name, self.get_case_data(case_name)) for case_name in cases])
-
             with Pool(processes=self.n_processes) as pool:
                 # Use `imap` to track progress with tqdm
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)

@@ -150,12 +150,15 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                 else:
                     rules = rule_list
                 for rule in rules:
+                    #update min-max intervals (might be avoidable since KBinsDiscretizer uses 0 for the min interval and n-1 for the highest one (?))
                     if min_interval > rule[0]:
                         min_interval = rule[0]
                         min_interval_i = i
                     if max_interval < rule[1]:
                         max_interval = rule[1]
                         max_interval_i = i
+                    # check if value is in interval : KBinsDiscretizer uses left-open, right-closed intervals, so:
+                    # a <= x < b
                     if rule[0] <= value < rule[1]:
                         model_id = i
                         break
@@ -175,7 +178,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                         model_id = i
                         break
             if model_id is None:
-                print('warning: split not known')
+                #print('warning: split not known')
                 model_id = np.random.choice(self.unique_ids)
         if model_id is None:
             print('model id is None', value, min_interval, max_interval)
