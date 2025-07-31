@@ -1,8 +1,8 @@
 from evaluation import *
 
 class SampleOutcomes_DRBART_BPIC2017(SampleOutcomes_BPIC2017):
-    def __init__(self, case_event_log, drbart_start_suspend, drbart_suspend_resume):
-        super().__init__(case_event_log)
+    def __init__(self, drbart_start_suspend, drbart_suspend_resume):
+        super().__init__()
         self.drbart_start_suspend = drbart_start_suspend
         self.drbart_suspend_resume = drbart_suspend_resume
 

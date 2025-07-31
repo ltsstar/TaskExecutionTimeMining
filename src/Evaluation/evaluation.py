@@ -1,6 +1,5 @@
 class SampleOutcomes:
-    def __init__(self, event_log):
-        self.event_log = event_log.copy()
+    def __init__(self):
         self.prepare_event_log()
         self.prepare_simulation()
 

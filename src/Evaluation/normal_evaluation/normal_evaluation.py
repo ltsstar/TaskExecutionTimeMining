@@ -8,14 +8,14 @@ from evaluation import *
 
 
 class SampleOutcomes_Normal(SampleOutcomes):
-    def __init__(self, event_log, resources=True,
+    def __init__(self, resources=True,
                     activity_key='concept:name_start',
                     case_id_key='case:concept:name',
                     resource_key='org:resource_start',
                     timestamp_key='time:timestamp_start',
                     value_key=None,
                 **kwargs):
-        super().__init__(event_log)
+        super().__init__()
         self.resources = resources
         self.activity_key = activity_key
         self.case_id_key = case_id_key

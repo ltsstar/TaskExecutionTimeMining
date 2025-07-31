@@ -11,7 +11,6 @@ from evaluation import *
 
 class SampleOutcomesAdvanced(SampleOutcomes):
     def __init__(self,
-                 case_event_log,
                  drbart_model_path,
                  categorical_args,
                  continuous_args,
@@ -25,7 +24,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                  activity_key='concept:name',
                  strict_parsing=True,
                  **kwargs):
-        super().__init__(case_event_log)
+        super().__init__()
         self.drbart_models = self.load_drbart_models(drbart_model_path, strict_parsing)
         self.transformations = self.load_transformations(drbart_model_path)
         self.splitting_column, assignments, self.routing_rules = self.load_gate(drbart_model_path)
@@ -222,7 +221,6 @@ class SampleOutcomesAdvanced(SampleOutcomes):
 
 class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
     def __init__(self,
-                 case_event_log,
                  drbart_model_path,
                  categorical_args,
                  continuous_args,
@@ -232,7 +230,7 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
                  max_sample_value=3600*24*365, #a year
                  timestamp_key='time:timestamp_start',
                  **kwargs):
-        super().__init__(case_event_log, drbart_model_path, categorical_args, continuous_args, known_activities,
+        super().__init__(drbart_model_path, categorical_args, continuous_args, known_activities,
                          [], resources, max_sample, max_sample_value, timestamp_key, **kwargs)
 
     def sample_end_time(self, case_log, start_time):

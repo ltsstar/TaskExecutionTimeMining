@@ -1,9 +1,9 @@
 from normal_evaluation.normal_evaluation import *
 
 class SampleOutcomes_Dumas_Normal(SampleOutcomes_Normal):
-    def __init__(self, case_event_log, dumas_model, resources=True,
+    def __init__(self, dumas_model, resources=True,
                 max_sample=10, **kwargs):
-        super().__init__(case_event_log, resources, **kwargs)
+        super().__init__(resources, **kwargs)
         self.dm = dumas_model
         self.max_sample = max_sample
 

@@ -8,14 +8,8 @@ from ..evaluation import *
 
 
 class SampleOutcomes_BPIC2017(SampleOutcomes):
-    def __init__(self, case_event_log):
-        super().__init__(case_event_log)
-
-    def prepare_event_log(self):
-        self.event_log['new_concept'] = self.event_log['concept:name'] +  '__' + self.event_log['EventID'] + '__' + self.event_log['lifecycle:transition']
-        self.event_log = self.event_log[self.event_log['concept:name'].str.startswith('W_')]
-        #self.event_log = self.event_log.set_index('new_concept')
-        self.new_concept_name = 'new_concept'
+    def __init__(self):
+        super().__init__()
 
     def sample_end_time(self, case_log, start_time, net, im):
         get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))

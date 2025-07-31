@@ -21,7 +21,7 @@ class ConductEvaluation:
                  n=1000,
                  n_processes=10,
                  batch_size=100):
-        self.sample_model = sample_model_type(event_log, trained_model, **sample_model_kwargs)
+        self.sample_model = sample_model_type(trained_model, **sample_model_kwargs)
         self.event_log = event_log
         self.n = n
         self.n_processes = n_processes
