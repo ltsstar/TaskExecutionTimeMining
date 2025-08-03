@@ -10,6 +10,7 @@ import io
 import pickle
 import copy
 import numpy
+numpy.seterr(all='warn', over='ignore')
 from decimal import *
 
 class ConductEvaluation:
@@ -89,7 +90,7 @@ class ConductEvaluation:
         plt.show()
 
     def get_case_data(self, case_name):
-        case_log = self.event_log[self.event_log['case:concept:name'] == case_name]
+        case_log = self.event_log[self.event_log['case:concept:name'] == case_name].copy()
         real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
         real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
         return (case_name, case_log, real_start_time_ts, real_end_time_ts)
