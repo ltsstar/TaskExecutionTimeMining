@@ -61,10 +61,18 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             event[transformation_column] = np.log1p(event[transformation_column])
             event[transformation_column] = (event[transformation_column] - m) / v
         return event
+    
+    def encode_seconds_in_day(self, seconds_in_day):
+        if 'seconds_in_day' in self.transformations:
+            encoded = np.log1p(seconds_in_day)
+            return  (encoded - self.transformations['seconds_in_day'][0]) / self.transformations['seconds_in_day'][1]
+        else:
+            return seconds_in_day
 
     def reverse_transform_duration(self, duration, key='duration_seconds'):
         m, v = self.transformations[key]
         return np.expm1(duration * v + m)
+    
 
     def sample_end_time(self, case_log, start_time):
         #get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
@@ -88,7 +96,6 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             else:
                 value = None
             
-            seconds_in_day = transformed_current_event['seconds_in_day']
             if self.resources:
                 resource = transformed_current_event[self.resource_key]
             else:
@@ -105,6 +112,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             # feature engineering
             current_time_ts = datetime.datetime.fromtimestamp(current_time)
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+            seconds_in_day_encoded = self.encode_seconds_in_day(seconds_in_day)
             day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()
 
             drbart_model_id = self.identify_drbart_model(transformed_current_event)
@@ -112,7 +120,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             for i in range(self.max_sample):
                 try:
                     duration = self.sample_duration(drbart_model = drbart_model,
-                                                    seconds_in_day = seconds_in_day,
+                                                    seconds_in_day = seconds_in_day_encoded,
                                                     resource = resource,
                                                     concept_name = concept_name,
                                                     resource_count = resource_count,
@@ -264,6 +272,7 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
 
             prev_finish_dt = datetime.datetime.fromtimestamp(prev_finish_ts)
             seconds_in_day = get_seconds_in_day(prev_finish_dt)
+            seconds_in_day_encoded = self.encode_seconds_in_day(seconds_in_day)
             day_of_week = prev_finish_dt.weekday()
             activity_count[event_name] += 1
             
@@ -271,7 +280,7 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
             drbart_model = self.drbart_models[str(drbart_model_id)]
             for i in range(self.max_sample):
                 duration = self.sample_duration(drbart_model = drbart_model,
-                                                seconds_in_day = seconds_in_day,
+                                                seconds_in_day = seconds_in_day_encoded,
                                                 resource = None,
                                                 concept_name = event_name,
                                                 resource_count = None,
