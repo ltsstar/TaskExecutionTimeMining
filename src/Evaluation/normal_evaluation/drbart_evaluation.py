@@ -2,11 +2,12 @@ from functools import partial
 from normal_evaluation.normal_evaluation import *
 
 class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
-    def __init__(self, case_event_log, drbart_model, resources=True,
-                max_sample=10, **kwargs):
-        super().__init__(case_event_log, resources, **kwargs)
+    def __init__(self, drbart_model, resources=True,
+                max_sample=10, max_sample_value=3600*24*365, **kwargs):
+        super().__init__(resources, **kwargs)
         self.drbart_model = drbart_model
         self.max_sample = max_sample
+        self.max_sample_value = max_sample_value
         self.categorical_args = []
         self.continuous_args = []
 
@@ -31,12 +32,16 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
         sample_time = lambda : pf()[1][0]
         for i in range(self.max_sample):
             sampled_time = sample_time()
-            if sampled_time > 0:
+            if sampled_time > 0 and sampled_time < self.max_sample_value:
                 break
         if sampled_time < 0:
             #print('warning sample time below 0:', sampled_time)
             #print(concept_name)
             return 0
+        elif sampled_time > self.max_sample_value:
+            #print('warning sample time above max:', sampled_time)
+            #print(concept_name)
+            return self.max_sample_value
         else:
             #print(categorical_variables, continuous_variables, sampled_time)
             return sampled_time

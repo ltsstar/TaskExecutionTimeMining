@@ -66,17 +66,15 @@ class SampleOutcomes_Normal(SampleOutcomes):
             # feature engineering
             current_time_ts = datetime.datetime.fromtimestamp(current_time)
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
-            day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()
-                       
+            day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()       
             finish_time = self.sample_duration(seconds_in_day = seconds_in_day,
-                                               resource = resource,
-                                               concept_name = concept_name,
-                                               resource_count = resource_count,
-                                               activity_count = activity_count,
-                                               day_of_week = day_of_week,
-                                               value = value
-                                              )
-            
+                                            resource = resource,
+                                            concept_name = concept_name,
+                                            resource_count = resource_count,
+                                            activity_count = activity_count,
+                                            day_of_week = day_of_week,
+                                            value = value
+                                            )
             current_time += finish_time
             #marking = semantics.execute(pn_task, net, marking)
 
