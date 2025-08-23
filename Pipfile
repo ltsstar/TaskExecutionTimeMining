@@ -16,6 +16,8 @@ crps = "*"
 statsmodels = "*"
 numba = "*"
 numpy = "*"
+ipykernel = "*"
+debugpy = "*"
 
 [dev-packages]
 
