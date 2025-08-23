@@ -13,6 +13,8 @@ class SampleOutcomes_Normal(SampleOutcomes):
                     case_id_key='case:concept:name',
                     resource_key='org:resource_start',
                     timestamp_key='time:timestamp_start',
+                    categorical_args = [],
+                    continuous_args = [],
                     value_key=None,
                 **kwargs):
         super().__init__()
@@ -22,6 +24,8 @@ class SampleOutcomes_Normal(SampleOutcomes):
         self.resource_key = resource_key
         self.timestamp_key = timestamp_key
         self.value_key = value_key
+        self.categorical_args = categorical_args
+        self.continuous_args = continuous_args
 
     def sample_end_time(self, case_log, start_time):
         #get_enabled_tasks = lambda marking : list(semantics.enabled_transitions(net, marking))
