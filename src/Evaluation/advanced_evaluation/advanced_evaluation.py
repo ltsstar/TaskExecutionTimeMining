@@ -130,6 +130,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                                                     )
                     real_finish_time = self.reverse_transform_duration(duration)
                 except Exception as e:
+                    print(e)
                     print('Case sampling error:', dict(current_event))
                     real_finish_time = 0.0
 
