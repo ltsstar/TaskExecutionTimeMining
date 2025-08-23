@@ -34,17 +34,32 @@ class ConductEvaluation:
 
     @staticmethod
     def _get_kde_from_samples(samples, ground_truth):
-        #kde = gaussian_kde(samples).pdf(ground_truth)[0]
-        k = lambda x, h : (Decimal(1) / (Decimal(h) * Decimal(numpy.sqrt(2 * numpy.pi)))) * Decimal(numpy.e)**(Decimal(-0.5) * (Decimal(x) / Decimal(h))**Decimal(2))
-        
-        iqr = numpy.percentile(samples, 75) - numpy.percentile(samples, 25)
-        h = 0.9 * min(numpy.std(samples), iqr/1.34) * len(samples)**(-1/5) # silverman rule
-        #h = 1800**2
-        #if iqr == 0 or h== 0:
-        #    print(samples)
-        #    print(ground_truth)
-        kde = Decimal(1)/Decimal(len(samples)) * sum([k(ground_truth - sample, h) for sample in samples]) 
-        return kde*24*3600
+        try:
+            #kde = gaussian_kde(samples).pdf(ground_truth)[0]
+            k = lambda x, h : (Decimal(1) / (Decimal(h) * Decimal(numpy.sqrt(2 * numpy.pi)))) * Decimal(numpy.e)**(Decimal(-0.5) * (Decimal(x) / Decimal(h))**Decimal(2))
+            
+            iqr = numpy.percentile(samples, 75) - numpy.percentile(samples, 25)
+            h = 0.9 * min(numpy.std(samples), iqr/1.34) * len(samples)**(-1/5) # silverman rule
+            #h = 1800**2
+            #if iqr == 0 or h== 0:
+            #    print(samples)
+            #    print(ground_truth)
+            kde = Decimal(1)/Decimal(len(samples)) * sum([k(ground_truth - sample, h) for sample in samples]) 
+            return kde*24*3600
+        except Exception as e:
+            print(f"Error in _get_kde_from_samples: {e}")
+            print("trying with eps")
+            epsilon = Decimal('1e-10')
+            k = lambda x, h : (Decimal(1) / ((Decimal(h) + epsilon) * Decimal(numpy.sqrt(2 * numpy.pi)))) * Decimal(numpy.e)**(Decimal(-0.5) * (Decimal(x) / (Decimal(h) + epsilon))**Decimal(2))
+
+            iqr = numpy.percentile(samples, 75) - numpy.percentile(samples, 25)
+            h = 0.9 * min(numpy.std(samples), iqr/1.34) * len(samples)**(-1/5) # silverman rule
+            #h = 1800**2
+            #if iqr == 0 or h== 0:
+            #    print(samples)
+            #    print(ground_truth)
+            kde = Decimal(1)/Decimal(len(samples)) * sum([k(ground_truth - sample, h) for sample in samples]) 
+            return kde*24*3600
 
     @staticmethod
     def _get_kde_from_samples_args(args):
