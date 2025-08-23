@@ -3,13 +3,16 @@ from normal_evaluation.normal_evaluation import *
 
 class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
     def __init__(self, drbart_model, resources=True,
-                max_sample=10, max_sample_value=3600*24*365, **kwargs):
+                max_sample=10, max_sample_value=3600*24*365,
+                known_activities=None,
+                known_resources=None,
+                **kwargs):
         super().__init__(resources, **kwargs)
         self.drbart_model = drbart_model
         self.max_sample = max_sample
         self.max_sample_value = max_sample_value
-        self.categorical_args = []
-        self.continuous_args = []
+        self.known_activities = known_activities
+        self.known_resources = known_resources
 
     def sample_duration(self, seconds_in_day, resource, concept_name,
                         resource_count, activity_count, day_of_week,
