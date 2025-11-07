@@ -18,6 +18,7 @@ numba = "*"
 numpy = "*"
 ipykernel = "*"
 debugpy = "*"
+sklearn-quantile = "*"
 
 [dev-packages]
 

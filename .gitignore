@@ -7,6 +7,10 @@
 *.py[cod]
 *$py.class
 
+# all pickle files
+**/*.pkl
+**/*.pickle
+
 # C extensions
 *.so
 
