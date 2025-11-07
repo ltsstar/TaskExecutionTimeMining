@@ -1,5 +1,9 @@
+import numpy
 import pandas
 import datetime
+from collections import Counter, deque, defaultdict
+from tqdm.auto import tqdm
+from scipy import sparse
 
 class TransformEventLog:
     def start_end_event_log(event_log,
@@ -215,3 +219,115 @@ class TransformEventLog:
         value_count_event_log = value_count_event_log.fillna(0)
 
         return value_count_event_log
+
+
+    '''
+    Implements the states the other cases are in when the event occurs
+    This was proposed as 'Level 2' for n = 1 and else 'Level 3' encoding in:
+        Senderovich, A., Di Francescomarino, C., Ghidini, C., Jorbina, K., & Maggi, F. M. (2017, August).
+        Intra and inter-case features in predictive process monitoring: A tale of two dimensions.
+        In International Conference on Business Process Management (pp. 306-323).
+        Cham: Springer International Publishing.
+
+    '''
+    def inter_instance_encoding_last_events(event_log,
+                                case_name = 'case:concept:name',
+                                timestamp_name = 'time:timestamp',
+                                concept_name = 'concept:name',
+                                state_prefix = '',
+                                n = 1
+    ):
+        total_events_per_case = event_log.groupby(case_name).size()
+        sorted_event_log = event_log.sort_values(timestamp_name, kind='mergesort')
+        cols = list(sorted_event_log.columns)
+        case_name_idx = cols.index(case_name)
+        concept_name_idx = cols.index(concept_name)
+
+        # Count unique states
+        unique_states = set()
+        case_to_history = {}
+        processed = defaultdict(int)
+
+        for row in tqdm(sorted_event_log.itertuples(index=False), total=sorted_event_log.shape[0], desc='Counting unique states'):
+            case_id = row[case_name_idx]
+            event_label = row[concept_name_idx]
+
+            if case_id not in case_to_history:
+                case_to_history[case_id] = deque(maxlen=n)
+
+            history = case_to_history[case_id]
+            history.append(event_label)
+            state = tuple(history)
+            unique_states.add(state)
+
+            processed[case_id] += 1
+            if processed[case_id] == total_events_per_case[case_id]:
+                del case_to_history[case_id]
+            
+
+        unique_states = sorted(list(unique_states))
+        # Map states to ids and column names
+        state_to_id = {state: i for i, state in enumerate(unique_states)}
+        col_names = [state_prefix + '_'.join(state) for state in unique_states]
+        num_states = len(unique_states)
+
+        # Create column names from states
+        state_to_col = {state : state_prefix + '_'.join(state) for state in sorted(unique_states)}
+
+        # --
+        # Second: Compute counts
+        # --
+        #values = numpy.empty((len(sorted_event_log), num_states), dtype=int)
+        values_sparse = sparse.lil_matrix((len(sorted_event_log), num_states), dtype='int16')
+
+        count_array = numpy.zeros(num_states, dtype=int)
+        case_to_history = {}
+        case_to_state_id = {}
+        processed = defaultdict(int)
+        ids_array = numpy.arange(num_states)
+
+        for row_num, row in enumerate(tqdm(sorted_event_log.itertuples(index=False), total=sorted_event_log.shape[0], desc='Computing state counts')):
+            case_id = row[case_name_idx]
+            event_label = row[concept_name_idx]
+    
+            if case_id not in case_to_history:
+                case_to_history[case_id] = deque(maxlen=n)
+                case_to_state_id[case_id] = -1
+            
+            history = case_to_history[case_id]
+
+            # Update state if case already has a state
+            old_id = case_to_state_id[case_id]
+            if old_id != -1:
+                count_array[old_id] -= 1
+            
+            # Append new activity and get new state
+            history.append(event_label)
+            new_state = tuple(history)
+            new_id = state_to_id[new_state]
+            count_array[new_id] += 1
+            case_to_state_id[case_id] = new_id
+            
+            # Compute row counts: count_array - 1 if id == new_id
+            subtract = (ids_array == new_id).astype(int)
+            row_counts = count_array - subtract
+            #values[row_num] = row_counts
+            values_sparse[row_num, :] = row_counts
+            
+            # Increment processed
+            processed[case_id] += 1
+            
+            # If this is the last event for the case, remove it from counts immediately
+            if processed[case_id] == total_events_per_case[case_id]:
+                count_array[new_id] -= 1
+                del case_to_history[case_id]
+                del case_to_state_id[case_id]
+
+        # Create new columns dataframe
+        #new_cols_df = pandas.DataFrame(values, columns=col_names, index=sorted_event_log.index)
+        new_cols_df = pandas.DataFrame.sparse.from_spmatrix(values_sparse, columns=col_names, index=sorted_event_log.index)
+        # Concat to sorted_df
+        sorted_event_log = pandas.concat([sorted_event_log, new_cols_df], axis=1)
+
+        result_event_log = sorted_event_log.sort_index()
+        return result_event_log
