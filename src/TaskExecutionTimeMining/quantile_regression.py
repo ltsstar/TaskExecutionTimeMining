@@ -1,26 +1,37 @@
+from typing import Tuple
 import numpy as np
 import pandas as pd
 from sklearn_quantile import RandomForestQuantileRegressor
+from collections import OrderedDict
+import pickle
+import hashlib
+from typing import Tuple, Any, Literal
+
+CacheMode = Literal["cached", "uncached", "force_fresh"]
 
 class QuantileRegression:
     def __init__(self,
                  event_log : pd.DataFrame, 
                  attributes : dict,
-                 target : str = 'duration_seconds'
+                 target : str = 'duration_seconds',
+                 cache_size : int = 500
                  ):
         # predict median=mean and first std. deviation
         self.event_log = event_log
         self.attributes = attributes
         self.target = target
         self.qrf = RandomForestQuantileRegressor(q=[0.50, 0.8413])
+        self._cache = OrderedDict()
+        self.cache_size = cache_size
 
     def _encode_df(self):
-        encoded_data = pd.DataFrame()
         mappings = dict()
+        encoded_columns = {}
         for col in self.attributes:
             codes, uniques = pd.factorize(self.event_log[col])
             mappings[col] = {cat : code for code, cat in enumerate(uniques)}
-            encoded_data[col] = codes
+            encoded_columns[col] = codes
+        encoded_data = pd.DataFrame(encoded_columns)
         x = encoded_data.astype(float).to_numpy()
         y = self.event_log[self.target]
         return x, y, mappings
@@ -30,37 +41,93 @@ class QuantileRegression:
         x, y, mappings = self._encode_df()
         self.mappings = mappings
         self.qrf.fit(x,y)
+        self.qrf.n_jobs = 1  # disable multiprocessing for predictions
 
     def _encode_with_mapping(self, df):
-        encoded_data = pd.DataFrame()
+        encoded_columns = {}
         for col in self.attributes:
             mapping = self.mappings[col]
             if col not in df:
-                encoded_data[col] = 0
+                encoded_columns[col] = 0
             else:
-                encoded_data[col] = df[col].map(mapping).fillna(-1).astype(int)
+                encoded_columns[col] = df[col].map(mapping).fillna(-1).astype(int)
+        encoded_data = pd.DataFrame(encoded_columns)
         x = encoded_data.astype(float).to_numpy()
         return x
+    
+    def _row_to_tuple(self, row: pd.Series) -> Tuple[Any, ...]:
+        """Convert row to immutable tuple for hashing."""
+        return tuple(row.get(col, None) for col in self.attributes)
 
+    def _hash_row(self, row_tuple: Tuple) -> str:
+        """Fast, stable hash."""
+        return hashlib.md5(pickle.dumps(row_tuple)).hexdigest()
+
+    def _encode_row_to_numpy(self, row: pd.Series) -> np.ndarray:
+        encoded = []
+        for col in self.attributes:
+            mapping = self.mappings[col]
+            val = row.get(col, None)
+            code = mapping.get(val, -1)  # unknown → -1
+            encoded.append(float(code))
+        return np.array(encoded, dtype=float).reshape(1, -1)
+
+    '''
     def predict(self, df):
         x = self._encode_with_mapping(df)
         return self.qrf.predict(x)
-    
-    def predict_numpy(self, x):
-        return self.qrf.predict(x)
-    
-    def _sample_from_prediction(self, prediction):
-        mu = prediction[0]
-        sigma = prediction[1] - prediction[0]
-        sampled_duration = np.random.normal(mu, sigma)
-        return sampled_duration
+    '''
 
-    def sample(self, df):
-        pred = self.predict(df)
-        sampled_durations = self._sample_from_prediction(pred)
-        return sampled_durations
-    
-    def sample_numpy(self, x):
-        pred = self.predict_numpy(x)
-        sampled_durations = self._sample_from_prediction(pred)
-        return sampled_durations
+    def _predict_single(self, x: np.ndarray) -> Tuple[float, float]:
+        pred = self.qrf.predict(x)
+        mu = float(pred[0])
+        sigma = max(float(pred[1] - mu), 1e-8)  # prevent zero/negative sigma
+        return mu, sigma
+
+    def predict(self, df: pd.DataFrame, mode: CacheMode = "cached") -> np.ndarray:
+        """
+        mode:
+          "cached"      – use cache, fill on miss          (default, fast)
+          "uncached"    – never read/write cache           (slow, fresh)
+          "force_fresh" – always recompute, ignore hits    (for ablation)
+        """
+        if mode == "uncached":
+            # completely bypass cache
+            results = []
+            for _, row in df.iterrows():
+                x = self._encode_row_to_numpy(row)
+                results.append(self._predict_single(x))
+            return np.array(results)
+
+        results = []
+        for _, row in df.iterrows():
+            row_tuple = self._row_to_tuple(row)
+            row_hash = self._hash_row(row_tuple)
+
+            # "force_fresh" → pretend miss even if hit
+            if mode == "force_fresh" or row_hash not in self._cache:
+                x = self._encode_row_to_numpy(row)
+                mu_sigma = self._predict_single(x)
+
+                # only write to cache in normal "cached" mode
+                if mode == "cached":
+                    self._cache[row_hash] = mu_sigma
+                    if len(self._cache) > self.cache_size:
+                        self._cache.popitem(last=False)  # evict LRU
+            else:
+                mu_sigma = self._cache[row_hash]
+                if mode == "cached":
+                    self._cache.move_to_end(row_hash)  # mark as recently used
+
+            results.append(mu_sigma)
+
+        return np.array(results)  # (n_rows, 2)
+
+    def sample(self, df: pd.DataFrame, mode: CacheMode = "cached") -> np.ndarray:
+        """Vectorized sampling with cache control."""
+        mu_sigma = self.predict(df, mode=mode)
+        samples = np.random.normal(
+            mu_sigma[:, 0],
+            np.maximum(mu_sigma[:, 1], 1e-8)
+        )
+        return samples

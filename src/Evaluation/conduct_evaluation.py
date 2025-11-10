@@ -164,7 +164,7 @@ class ConductEvaluation:
             sample_results = []
             return_results = dict()
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
-            for c in tqdm(cases):
+            for c in cases:#tqdm(cases):
                 case_data[c] = self.get_case_data(c)
                 r = func(case_data[c][1])
                 sample_results.append(r)

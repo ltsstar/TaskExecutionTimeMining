@@ -3,27 +3,32 @@ import numpy as np
 import collections
 import pm4py
 from pm4py.objects.petri_net import semantics
+from collections import deque
 
 from evaluation import *
 
 
 class SampleOutcomes_Normal(SampleOutcomes):
     def __init__(self, resources=True,
+                    inter_instance_encoding = True,
                     activity_key='concept:name_start',
                     case_id_key='case:concept:name',
                     resource_key='org:resource_start',
                     timestamp_key='time:timestamp_start',
+                    inter_instance_column_names = [],
                     categorical_args = [],
                     continuous_args = [],
                     value_key=None,
                 **kwargs):
         super().__init__()
         self.resources = resources
+        self.inter_instance_encoding = inter_instance_encoding
         self.activity_key = activity_key
         self.case_id_key = case_id_key
         self.resource_key = resource_key
         self.timestamp_key = timestamp_key
         self.value_key = value_key
+        self.inter_instance_column_names = inter_instance_column_names
         self.categorical_args = categorical_args
         self.continuous_args = continuous_args
 
@@ -61,6 +66,16 @@ class SampleOutcomes_Normal(SampleOutcomes):
             else:
                 resource_count = None
 
+            # inter instance encoding
+            ii_columns = {}
+            if self.inter_instance_encoding:
+                for col in self.inter_instance_column_names:
+                    if col in current_event:
+                        ii_columns[col] = current_event[col]
+                    else:
+                        ii_columns[col] = 0
+
+
             # it can happen that unrealistically high values get sampled
             # this causes problems with the conversion to datetime
             # therefore return
@@ -77,7 +92,8 @@ class SampleOutcomes_Normal(SampleOutcomes):
                                             resource_count = resource_count,
                                             activity_count = activity_count,
                                             day_of_week = day_of_week,
-                                            value = value
+                                            value = value,
+                                            inter_instance_columns = ii_columns
                                             )
             current_time += finish_time
             #marking = semantics.execute(pn_task, net, marking)
