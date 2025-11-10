@@ -19,6 +19,7 @@ numpy = "*"
 ipykernel = "*"
 debugpy = "*"
 sklearn-quantile = "*"
+line-profiler = "*"
 
 [dev-packages]
 
