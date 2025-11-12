@@ -8,10 +8,10 @@ from evaluation import *
 
 
 class SampleOutcomes_PCR(SampleOutcomes):
-    def __init__(self, event_log,
+    def __init__(self,
                  resources=True,
                 **kwargs):
-        super().__init__(event_log)
+        super().__init__()
         self.resources = resources
 
     def sample_end_time(self, case_log, start_time):

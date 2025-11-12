@@ -2,9 +2,9 @@ from functools import partial
 from PCR_evaluation.normal_evaluation import *
 
 class SampleOutcomes_DRBART_PCR(SampleOutcomes_PCR):
-    def __init__(self, case_event_log, drbart_model, resources=True,
+    def __init__(self, drbart_model, resources=True,
                  max_sample=10, **kwargs):
-        super().__init__(case_event_log, resources, **kwargs)
+        super().__init__(resources, **kwargs)
         self.drbart_model = drbart_model
         self.max_sample = max_sample
         self.categorical_args = []
