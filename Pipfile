@@ -15,11 +15,11 @@ pysqlite3 = "*"
 crps = "*"
 statsmodels = "*"
 numba = "*"
-numpy = "*"
 ipykernel = "*"
 debugpy = "*"
 sklearn-quantile = "*"
 line-profiler = "*"
+numpy = "==2.2.*"
 
 [dev-packages]
 
