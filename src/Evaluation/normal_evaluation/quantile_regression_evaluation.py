@@ -15,11 +15,11 @@ class SampleOutcomes_QuantileRegression(SampleOutcomes_Normal):
 
     def sample_duration(self, seconds_in_day, resource, concept_name,
                                    resource_count, activity_count,
-                                   day_of_week, value, inter_instance_columns):
+                                   day_of_week, value, inter_instance_counts):
         for i in range(self.max_sample):
             sampled_time = self.sample_from_model(seconds_in_day, resource, concept_name,
                                    resource_count, activity_count,
-                                   day_of_week, value, inter_instance_columns)
+                                   day_of_week, value, inter_instance_counts)
             if sampled_time > 0:
                 break
         if sampled_time < 0:

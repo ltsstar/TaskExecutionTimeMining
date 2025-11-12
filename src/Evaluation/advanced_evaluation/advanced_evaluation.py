@@ -16,6 +16,8 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                  continuous_args,
                  known_activities,
                  known_resources,
+                 inter_instance_column_names = [],
+                 inter_instance_encoding = True,
                  resources=True,
                  max_sample=10,
                  max_sample_value = 3600*24*365, #a year
@@ -40,6 +42,8 @@ class SampleOutcomesAdvanced(SampleOutcomes):
         self.resources = resources
         self.resource_key = resource_key
         self.activity_key = activity_key
+        self.inter_instance_column_names = inter_instance_column_names
+        self.inter_instance_encoding = inter_instance_encoding
 
 
     def load_drbart_models(self, drbart_model_path, strict_parsing):
@@ -115,6 +119,15 @@ class SampleOutcomesAdvanced(SampleOutcomes):
             seconds_in_day_encoded = self.encode_seconds_in_day(seconds_in_day)
             day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()
 
+            # inter instance encoding
+            ii_columns = {}
+            if self.inter_instance_encoding:
+                for col in self.inter_instance_column_names:
+                    if col in current_event:
+                        ii_columns[col] = current_event[col]
+                    else:
+                        ii_columns[col] = 0
+
             drbart_model_id = self.identify_drbart_model(transformed_current_event)
             drbart_model = self.drbart_models[str(drbart_model_id)]
             for i in range(self.max_sample):
@@ -126,7 +139,8 @@ class SampleOutcomesAdvanced(SampleOutcomes):
                                                     resource_count = resource_count,
                                                     activity_count = activity_count,
                                                     day_of_week = day_of_week,
-                                                    value = value
+                                                    value = value,
+                                                    inter_instance_counts = ii_columns
                                                     )
                     real_finish_time = self.reverse_transform_duration(duration)
                 except Exception as e:
@@ -194,7 +208,7 @@ class SampleOutcomesAdvanced(SampleOutcomes):
 
     def sample_duration(self, drbart_model, seconds_in_day, resource, concept_name,
                         resource_count, activity_count, day_of_week,
-                        value):
+                        value, inter_instance_counts):
 
         '''
         The eval() function calls the parameters passed
@@ -234,12 +248,15 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
                  categorical_args,
                  continuous_args,
                  known_activities,
+                 inter_instance_column_names = [],
+                 inter_instance_encoding = True,
                  resources=True,
                  max_sample=10,
                  max_sample_value=3600*24*365, #a year
                  timestamp_key='time:timestamp_start',
                  **kwargs):
         super().__init__(drbart_model_path, categorical_args, continuous_args, known_activities,
+                         inter_instance_column_names, inter_instance_encoding,
                          [], resources, max_sample, max_sample_value, timestamp_key, **kwargs)
 
     def sample_end_time(self, case_log, start_time):
@@ -276,6 +293,15 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
             seconds_in_day_encoded = self.encode_seconds_in_day(seconds_in_day)
             day_of_week = prev_finish_dt.weekday()
             activity_count[event_name] += 1
+
+            # inter instance encoding
+            ii_columns = {}
+            if self.inter_instance_encoding:
+                for col in self.inter_instance_column_names:
+                    if col in current_event:
+                        ii_columns[col] = current_event[col]
+                    else:
+                        ii_columns[col] = 0
             
             drbart_model_id = self.identify_drbart_model(transformed_current_event)
             drbart_model = self.drbart_models[str(drbart_model_id)]
@@ -287,7 +313,8 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
                                                 resource_count = None,
                                                 activity_count = activity_count,
                                                 day_of_week = day_of_week,
-                                                value = None
+                                                value = None,
+                                                inter_instance_counts = ii_columns
                         )
                 real_finish_time = self.reverse_transform_duration(duration)
                 if real_finish_time < self.max_sample_value:
