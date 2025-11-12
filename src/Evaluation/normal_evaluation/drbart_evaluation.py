@@ -6,6 +6,8 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
                 max_sample=10, max_sample_value=3600*24*365,
                 known_activities=None,
                 known_resources=None,
+                inter_instance_column_names = [],
+                inter_instance_encoding = True,
                 **kwargs):
         super().__init__(resources, **kwargs)
         self.drbart_model = drbart_model
@@ -13,10 +15,12 @@ class SampleOutcomes_DRBART_Normal(SampleOutcomes_Normal):
         self.max_sample_value = max_sample_value
         self.known_activities = known_activities
         self.known_resources = known_resources
+        self.inter_instance_column_names = inter_instance_column_names
+        self.inter_instance_encoding = inter_instance_encoding
 
     def sample_duration(self, seconds_in_day, resource, concept_name,
                         resource_count, activity_count, day_of_week,
-                        value):
+                        value, inter_instance_counts):
 
         continuous_variables = list()
         for cv in self.continuous_args:
@@ -251,3 +255,37 @@ class SampleOutcomes_DRBART_Normal_R_S(SampleOutcomes_DRBART_Normal):
         super().__init__(*args, **kwargs)
         self.categorical_args =  ['resource']
         self.continuous_args = ['seconds_in_day']
+
+
+"""
+Inter-instance
+"""
+class SampleOutcomes_DRBART_Normal_A_R_S_D_AC_RC_II(SampleOutcomes_DRBART_Normal):
+    def __init__(self, *args, **kwargs):
+        kwargs['inter_instance_encoding'] = True
+        super().__init__(*args, **kwargs)
+        self.categorical_args =  ['resource', 'concept_name',
+                                  'day_of_week',
+                                  '(lambda resource_count, known_resources : [0 if resource not in resource_count else resource_count[resource] for resource in known_resources])(resource_count, self.known_resources)',
+                                  '(lambda activity_count, known_activities : [0 if activity not in activity_count else activity_count[activity] for activity in known_activities])(activity_count, self.known_activities)',
+                                  '(lambda inter_instance_counts, inter_instance_column_names : [0 if inter_instance_column_name not in inter_instance_counts else inter_instance_counts[inter_instance_column_name] for inter_instance_column_name in inter_instance_column_names])(inter_instance_counts, self.inter_instance_column_names)'
+                                 ]
+        self.continuous_args = ['seconds_in_day']
+        self.known_activities = kwargs['known_activities']
+        self.known_resources = kwargs['known_resources']
+        self.inter_instance_columns = kwargs['inter_instance_column_names']
+
+
+"""
+Inter-instance
+"""
+class SampleOutcomes_DRBART_Normal_A_R_S_D_II(SampleOutcomes_DRBART_Normal):
+    def __init__(self, *args, **kwargs):
+        kwargs['inter_instance_encoding'] = True
+        super().__init__(*args, **kwargs)
+        self.categorical_args =  ['resource', 'concept_name',
+                                  'day_of_week',
+                                  '(lambda inter_instance_counts, inter_instance_column_names : [0 if inter_instance_column_name not in inter_instance_counts else inter_instance_counts[inter_instance_column_name] for inter_instance_column_name in inter_instance_column_names])(inter_instance_counts, self.inter_instance_column_names)'
+                                 ]
+        self.continuous_args = ['seconds_in_day']
+        self.inter_instance_columns = kwargs['inter_instance_column_names']
