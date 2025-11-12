@@ -12,8 +12,8 @@ x_values_continous <- c()
 y_value <- 'duration_seconds'
 
 
-nburn <- 10000
-nsim <- 100
-nthin <- 100
+nburn <- 7500
+nsim <- 50
+nthin <- 50
 
 
