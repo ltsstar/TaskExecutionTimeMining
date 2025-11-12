@@ -138,7 +138,7 @@ class ConductEvaluation:
             grouped = self.event_log.groupby('case:concept:name')
 
             case_data = {}
-            for case_name, case_log in tqdm(grouped):
+            for case_name, case_log in tqdm(grouped, miniters=50):
                 real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
                 real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
                 case_data[case_name] = (case_name, case_log, real_start_time_ts, real_end_time_ts)
@@ -148,14 +148,16 @@ class ConductEvaluation:
                 func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
                 sample_results = list(tqdm(
                     pool.imap(func, [c[1] for c in case_data.values()], self.batch_size),
-                    total=len(cases)
+                    total=len(cases),
+                    miniters=50
                 ))
 
             with Pool(processes=self.n_processes) as pool:
                 #func = lambda i, c : self.__get_kde_from_samples(sample_results[i], case_data[c][3])
                 rr = list(tqdm(
                     pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)], self.batch_size),
-                    total=len(case_data)
+                    total=len(case_data),
+                    miniters=50
                 ))
                 return_results = dict([(c, rr[i]) for i, c in enumerate(case_data)])
                 #return_results = dict([(c, self._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)])
@@ -164,7 +166,7 @@ class ConductEvaluation:
             sample_results = []
             return_results = dict()
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
-            for c in cases:#tqdm(cases):
+            for c in tqdm(cases):
                 case_data[c] = self.get_case_data(c)
                 r = func(case_data[c][1])
                 sample_results.append(r)

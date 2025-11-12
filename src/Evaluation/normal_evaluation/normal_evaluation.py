@@ -93,7 +93,7 @@ class SampleOutcomes_Normal(SampleOutcomes):
                                             activity_count = activity_count,
                                             day_of_week = day_of_week,
                                             value = value,
-                                            inter_instance_columns = ii_columns
+                                            inter_instance_counts = ii_columns
                                             )
             current_time += finish_time
             #marking = semantics.execute(pn_task, net, marking)
