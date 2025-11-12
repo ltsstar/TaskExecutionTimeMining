@@ -10,9 +10,14 @@ from evaluation import *
 class SampleOutcomes_PCR(SampleOutcomes):
     def __init__(self,
                  resources=True,
+                 inter_instance_encoding=True,
+                 inter_instance_column_names=[],
                 **kwargs):
         super().__init__()
         self.resources = resources
+        self.inter_instance_encoding = inter_instance_encoding
+        self.inter_instance_column_names = inter_instance_column_names
+
 
     def sample_end_time(self, case_log, start_time):
 
@@ -45,13 +50,25 @@ class SampleOutcomes_PCR(SampleOutcomes):
             seconds_in_day = get_seconds_in_day(prev_finish_dt)
             day_of_week = prev_finish_dt.weekday()
             activity_count[event_name] += 1
+
+            # inter instance encoding
+            ii_columns = {}
+            if self.inter_instance_encoding:
+                for col in self.inter_instance_column_names:
+                    if col in current_event:
+                        ii_columns[col] = current_event[col]
+                    else:
+                        ii_columns[col] = 0
+
             
             duration = self.sample_duration(seconds_in_day = seconds_in_day,
                                             resource = None,
                                             concept_name = event_name,
                                             resource_count = None,
                                             activity_count = activity_count,
-                                            day_of_week = day_of_week
+                                            day_of_week = day_of_week,
+                                            value = None,
+                                            inter_instance_counts = ii_columns
                        )
             finish_times[event_name] = prev_finish_ts + duration
             durations[event_name] = duration
