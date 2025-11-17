@@ -1,0 +1,6 @@
+# 1) Exclude all folders named "runs" anywhere in the project
+**/runs/
+
+# 2) Exclude all .pkl files in all subdirectories
+**/*.pkl
+

@@ -20,6 +20,8 @@ debugpy = "*"
 sklearn-quantile = "*"
 line-profiler = "*"
 numpy = "==2.2.*"
+torch = "*"
+tensorboard = "*"
 
 [dev-packages]
 
