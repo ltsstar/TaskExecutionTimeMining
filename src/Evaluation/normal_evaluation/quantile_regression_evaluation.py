@@ -66,7 +66,7 @@ class SampleOutcomes_QuantileRegression_ARS(SampleOutcomes_QuantileRegression):
                             resource_count, activity_count,
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day]], columns=[self.activity_key, self.resource_key, 'seconds_in_day'])
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ASAC(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -77,7 +77,7 @@ class SampleOutcomes_QuantileRegression_ASAC(SampleOutcomes_QuantileRegression):
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, seconds_in_day] + list(activity_count.values())],
                           columns=[self.activity_key, 'seconds_in_day'] + list(activity_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_RSRC(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -88,7 +88,7 @@ class SampleOutcomes_QuantileRegression_RSRC(SampleOutcomes_QuantileRegression):
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[resource, seconds_in_day] + list(resource_count.values())],
                           columns=[self.resource_key, 'seconds_in_day'] + list(resource_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ARSAC(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -99,7 +99,7 @@ class SampleOutcomes_QuantileRegression_ARSAC(SampleOutcomes_QuantileRegression)
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day] + list(activity_count.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day'] + list(activity_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
 
 
 class SampleOutcomes_QuantileRegression_ARSRC(SampleOutcomes_QuantileRegression):
@@ -111,7 +111,7 @@ class SampleOutcomes_QuantileRegression_ARSRC(SampleOutcomes_QuantileRegression)
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day] + list(resource_count.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day'] + list(resource_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
 
     
 class SampleOutcomes_QuantileRegression_ARSACRC(SampleOutcomes_QuantileRegression):
@@ -123,7 +123,7 @@ class SampleOutcomes_QuantileRegression_ARSACRC(SampleOutcomes_QuantileRegressio
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day] + list(activity_count.values()) + list(resource_count.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day'] + list(activity_count.keys()) + list(resource_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ARSD(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -134,7 +134,7 @@ class SampleOutcomes_QuantileRegression_ARSD(SampleOutcomes_QuantileRegression):
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day, day_of_week]],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day', 'day_of_week'])
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ARSDACRC(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -145,7 +145,7 @@ class SampleOutcomes_QuantileRegression_ARSDACRC(SampleOutcomes_QuantileRegressi
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day, day_of_week] + list(activity_count.values()) + list(resource_count.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day', 'day_of_week'] + list(activity_count.keys()) + list(resource_count.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ARSDACRCII(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -156,7 +156,7 @@ class SampleOutcomes_QuantileRegression_ARSDACRCII(SampleOutcomes_QuantileRegres
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day, day_of_week] + list(activity_count.values()) + list(resource_count.values()) + list(inter_instance_columns.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day', 'day_of_week'] + list(activity_count.keys()) + list(resource_count.keys()) + list(inter_instance_columns.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
     
 class SampleOutcomes_QuantileRegression_ARSDII(SampleOutcomes_QuantileRegression):
     def __init__(self, *args, **kwargs):
@@ -167,4 +167,4 @@ class SampleOutcomes_QuantileRegression_ARSDII(SampleOutcomes_QuantileRegression
                             day_of_week, value, inter_instance_columns):
         df = pd.DataFrame([[concept_name, resource, seconds_in_day, day_of_week] + list(inter_instance_columns.values())],
                           columns=[self.activity_key, self.resource_key, 'seconds_in_day', 'day_of_week'] + list(inter_instance_columns.keys()))
-        return self.qrm.sample(df)[0]
+        return self.qrm.sample(df, mode='uncached')[0]
