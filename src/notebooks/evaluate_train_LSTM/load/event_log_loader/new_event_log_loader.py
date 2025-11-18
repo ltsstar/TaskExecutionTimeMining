@@ -222,6 +222,9 @@ class TensorEncoderDecoder:
         self.categorical_columns = categorical_columns
         self.continuous_columns = continuous_columns
         self.continuous_positive_columns = continuous_positive_columns
+        self.timestamp_name = kwargs.get('timestamp_name')
+        if self.timestamp_name is None:
+            raise ValueError("TensorEncoderDecoder requires 'timestamp_name' in event log properties")
 
         self.categorical_imputers : dict[str, SimpleImputer] = dict()
         self.categorical_encoders : dict[str, sklearn.preprocessing.OrdinalEncoder]  = dict()
@@ -270,31 +273,33 @@ class TensorEncoderDecoder:
 
     def encode_df(self, df) -> tuple[tuple[torch.Tensor, torch.Tensor, tuple],
                                      tuple[list[tuple[str, int, dict[str : int]]]]]:
+        df_prepared, case_spans = self._prepare_case_spans(df)
         categorical_tensors = []
         #categorical_sizes = []
         all_categories = [[], []]
         for col in self.categorical_columns: #tqdm(self.categorical_columns, desc='categorical tensors'):
             if col == self.concept_name:
-                case_ids, enc_column, categories, max_classes = self.encode_categorical_column(df, col, return_case_ids=True)
+                case_ids, enc_column, categories, max_classes = self.encode_categorical_column(df_prepared, col, case_spans, return_case_ids=True)
             else:
-                enc_column, categories, max_classes = self.encode_categorical_column(df, col)
+                enc_column, categories, max_classes = self.encode_categorical_column(df_prepared, col, case_spans)
             categorical_tensors.append(enc_column)
             all_categories[0].append((col, max_classes, categories))
         continuous_tensors = []
         for col in self.continuous_columns + self.continuous_positive_columns: #tqdm(self.continuous_columns + self.continuous_positive_columns, desc='continouous tensors'):
-            continuous_tensors.append(self.encode_continuous_column(df, col))
+            continuous_tensors.append(self.encode_continuous_column(df_prepared, col, case_spans))
             all_categories[1].append((col, 1, dict()))
         return (tuple(categorical_tensors), tuple(continuous_tensors), tuple(case_ids)), tuple(all_categories)
 
     # Corrected verison:
-    def encode_categorical_column(self, df, col, return_case_ids=False):
-        grouped = df.groupby(self.case_name)
+    def encode_categorical_column(self, df, col, case_spans, return_case_ids=False):
         windows = []
         categories = {category: idx + 1 for idx, category in enumerate(self.categorical_encoders[col].categories_[0])}
-        
+        col_values = df[col].astype(object).to_numpy(copy=False)
         case_ids = []
-        for case_id, group in grouped:#tqdm(grouped, desc=col, leave=False):
-            case_values = np.array(group[[col]], dtype=object)
+        for case_id, start_idx, end_idx in case_spans:
+            case_values = col_values[start_idx:end_idx].reshape(-1, 1)
+            if case_values.size == 0:
+                continue
             case_values_enc = self.categorical_encoders[col].transform(case_values) + 1  # shape (n,1)
             # Pad encodings - clearer prefix loop (prefix_len from min_suffix_size .. len)
             padded_encodings = []
@@ -369,11 +374,13 @@ class TensorEncoderDecoder:
         return t.squeeze(-1)
     """
     
-    def encode_continuous_column(self, df, col):
-        grouped = df.groupby(self.case_name)
+    def encode_continuous_column(self, df, col, case_spans):
         windows = []
-        for case_id, group in grouped:#tqdm(grouped, desc=col, leave=False):
-            case_values = group[[col]].values  # shape (n,1)
+        col_values = df[col].to_numpy(copy=False).reshape(-1, 1)
+        for _, start_idx, end_idx in case_spans:#tqdm(grouped, desc=col, leave=False):
+            case_values = col_values[start_idx:end_idx]
+            if case_values.size == 0:
+                continue
             case_values_imputed = self.continuous_imputers[col].transform(case_values)
             case_values_enc = self.continuous_encoders[col].transform(case_values_imputed)
             padded_encodings = []
@@ -410,6 +417,18 @@ class TensorEncoderDecoder:
             pad_count = self.window_size - len(prev_list)
             # use 0.0 for continuous; for categorical it will be cast to int later when dtype=int
             return [[0.0]] * pad_count + prev_list
+
+    def _prepare_case_spans(self, df: pd.DataFrame) -> tuple[pd.DataFrame, list[tuple[str, int, int]]]:
+        if df.empty:
+            return df.copy(), []
+
+        df_sorted = df.sort_values([self.case_name, self.timestamp_name], kind='mergesort').reset_index(drop=True)
+        case_array = df_sorted[self.case_name].to_numpy(copy=False)
+        change_points = np.flatnonzero(case_array[1:] != case_array[:-1]) + 1
+        starts = np.concatenate(([0], change_points))
+        ends = np.concatenate((change_points, [len(case_array)]))
+        spans = [(case_array[start], int(start), int(end)) for start, end in zip(starts, ends)]
+        return df_sorted, spans
 
     def decode_event(self, event_tuple : tuple):
         cat, cont, case_id = event_tuple

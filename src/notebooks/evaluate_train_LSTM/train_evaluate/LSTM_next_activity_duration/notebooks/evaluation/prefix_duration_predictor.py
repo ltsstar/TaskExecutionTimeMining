@@ -60,7 +60,6 @@ TRANSFORMED_LOG_DIR = (NOTEBOOK_DIR / "../../../../../transformed_event_logs").r
 MODEL_DIR = (NOTEBOOK_DIR / "../training_variational_dropout/Helpdesk").resolve()
 
 TRAIN_DATA_PATH = (ENCODED_DIR / "helpdesk_all_1_train.pkl").resolve()
-TRAIN_EVENT_LOG_PATH = (TRANSFORMED_LOG_DIR / "Helpdesk_train.csv").resolve()
 DEFAULT_EVENT_LOG_PROPERTIES = {
     "case_name": "Case ID",
     "concept_name": "Activity_start",
@@ -127,7 +126,6 @@ class PrefixDurationPredictor:
         self,
         *,
         train_loader_path: Path = TRAIN_DATA_PATH,
-        train_event_log_path: Path = TRAIN_EVENT_LOG_PATH,
         model_dir: Path = MODEL_DIR,
         model_path: Optional[Path] = None,
         event_log_properties: Mapping[str, Any] = DEFAULT_EVENT_LOG_PROPERTIES,
@@ -136,23 +134,22 @@ class PrefixDurationPredictor:
         device: Optional[str] = None,
     ) -> None:
         self.train_loader_path = train_loader_path
-        self.train_event_log_path = train_event_log_path
         self.event_log_properties = dict(event_log_properties)
         self.selected_cat_attributes = tuple(selected_cat_attributes)
         self.selected_num_attributes = tuple(selected_num_attributes)
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
 
-        self._validate_files_exist(train_loader_path, train_event_log_path, model_dir)
+        self._validate_files_exist(train_loader_path, model_dir)
 
-        self.train_event_log = new_event_log_loader.CSV2EventLog(
-            str(train_event_log_path), **self.event_log_properties
-        )
-        self.train_event_log_df = self.train_event_log.df
 
         self.train_dataset = torch.load(train_loader_path, map_location="cpu", weights_only=False)
         self.encoder_decoder = self.train_dataset.encoder_decoder
         self.case_name_col = self.encoder_decoder.case_name
         self.timestamp_col = self.event_log_properties["timestamp_name"]
+        if not hasattr(self.encoder_decoder, "timestamp_name"):
+            # Older pickles did not persist the timestamp attribute. Keep the
+            # encoder backward compatible by injecting it at runtime.
+            self.encoder_decoder.timestamp_name = self.timestamp_col
 
         self.selected_cat_ids = [
             idx
@@ -216,9 +213,27 @@ class PrefixDurationPredictor:
             columns.add(col)
         return tuple(columns)
 
+    def _coerce_prefix_dataframe(
+        self, prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame
+    ) -> pd.DataFrame:
+        """Return a defensive copy of the incoming prefix as a DataFrame."""
+        if isinstance(prefix_events, pd.DataFrame):
+            # Work on a shallow copy so we can safely mutate columns without
+            # touching the caller's frame.
+            return prefix_events.copy(deep=True)
+
+        if isinstance(prefix_events, Sequence):
+            if not prefix_events:
+                raise ValueError("prefix_events must contain at least one event dictionary")
+            return pd.DataFrame(prefix_events)
+
+        raise TypeError(
+            "prefix_events must be either a pandas DataFrame or a sequence of mapping objects"
+        )
+
     def predict(
         self,
-        prefix_events: Sequence[Mapping[str, Any]],
+        prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame,
         *,
         case_id: Optional[str] = None,
     ) -> Prediction:
@@ -252,7 +267,7 @@ class PrefixDurationPredictor:
 
     def predict_all_prefixes(
         self,
-        prefix_events: Sequence[Mapping[str, Any]],
+        prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame,
         *,
         case_id: Optional[str] = None,
     ) -> list[Prediction]:
@@ -292,31 +307,13 @@ class PrefixDurationPredictor:
             )
         return predictions
 
-    def sample_training_case(self, case_index: int = 0) -> list[dict[str, Any]]:
-        case_ids = self.train_event_log_df[self.case_name_col].unique()
-        if case_index >= len(case_ids):
-            raise IndexError(
-                f"Requested case_index {case_index} but only {len(case_ids)} case(s) are available"
-            )
-        case_id = case_ids[case_index]
-        case_df = (
-            self.train_event_log_df[self.train_event_log_df[self.case_name_col] == case_id]
-            .sort_values(self.timestamp_col)
-            .reset_index(drop=True)
-        )
-        return case_df.to_dict("records")
-
     def _encode_prefix(
         self,
-        prefix_events: Sequence[Mapping[str, Any]],
+        prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame,
         *,
         case_id: Optional[str] = None,
     ) -> tuple[tuple[tuple[torch.Tensor, ...], tuple[torch.Tensor, ...], tuple[str, ...]], pd.DataFrame]:
-        if not prefix_events:
-            raise ValueError("prefix_events must contain at least one event dictionary")
-
-        prefix_df = pd.DataFrame.from_records(prefix_events)
-        prefix_df = prefix_df.copy()
+        prefix_df = self._coerce_prefix_dataframe(prefix_events)
 
         if self.case_name_col not in prefix_df.columns:
             inferred_case_id = case_id or "inference_case"

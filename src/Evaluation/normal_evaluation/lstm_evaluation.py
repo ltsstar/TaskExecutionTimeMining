@@ -16,10 +16,15 @@ class SampleOutcomes_LSTM(SampleOutcomes_Normal):
         current_time = start_time
         finish_time = dict()
         
-        events = []
+        case_log_sim = case_log.sort_values(self.timestamp_key).copy().reset_index(drop=True)
+        if 'seconds_in_day' not in case_log_sim.columns:
+            case_log_sim['seconds_in_day'] = float('nan')
+        case_log_sim['seconds_in_day'] = case_log_sim['seconds_in_day'].astype('float64', copy=False)
+        if 'day_in_week' not in case_log_sim.columns:
+            case_log_sim['day_in_week'] = float('nan')
+        case_log_sim['day_in_week'] = case_log_sim['day_in_week'].astype('float64', copy=False)
 
-        for index, current_event in case_log.iterrows():
-            current_event_dict = current_event.to_dict()
+        for row_idx, current_event in case_log_sim.iterrows():
 
             # inter instance encoding
             ii_columns = {}
@@ -42,18 +47,17 @@ class SampleOutcomes_LSTM(SampleOutcomes_Normal):
             seconds_in_day = (current_time_ts - current_time_ts.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
             day_of_week = datetime.datetime.fromtimestamp(current_time).weekday()   
 
-            current_event_dict['seconds_in_day'] = seconds_in_day
-            current_event_dict['day_in_week'] = day_of_week
+            case_log_sim.at[row_idx, 'seconds_in_day'] = seconds_in_day
+            case_log_sim.at[row_idx, 'day_in_week'] = day_of_week
 
-            events.append(current_event_dict)    
-
-            finish_time = self.sample_duration(events)
+            prefix_df = case_log_sim.iloc[:row_idx + 1]
+            finish_time = self.sample_duration(prefix_df)
             current_time += finish_time
 
         return current_time
     
-    def sample_duration(self, event_list):
-        sampled_mean, sampled_variance = self.lstm_model.predict(event_list)
+    def sample_duration(self, prefix_df):
+        sampled_mean, sampled_variance = self.lstm_model.predict(prefix_df)
 
         for i in range(self.max_sample):
             sampled_time = np.random.normal(sampled_mean, sampled_variance)
