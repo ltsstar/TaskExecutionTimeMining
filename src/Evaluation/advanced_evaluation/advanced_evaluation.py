@@ -255,9 +255,9 @@ class SampleOutcomesAdvancedPCR(SampleOutcomesAdvanced):
                  max_sample_value=3600*24*365, #a year
                  timestamp_key='time:timestamp_start',
                  **kwargs):
-        super().__init__(drbart_model_path, categorical_args, continuous_args, known_activities,
+        super().__init__(drbart_model_path, categorical_args, continuous_args, known_activities, [],
                          inter_instance_column_names, inter_instance_encoding,
-                         [], resources, max_sample, max_sample_value, timestamp_key, **kwargs)
+                         resources, max_sample, max_sample_value, timestamp_key, **kwargs)
 
     def sample_end_time(self, case_log, start_time):
 

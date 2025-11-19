@@ -126,56 +126,90 @@ class ConductEvaluation:
         return [sample_model.sample_case(case_log) for i in range(n)]
 
     @staticmethod
+    def _sample_case_with_metadata(args, sample_model, n, return_case_log):
+        case_name, case_log = args
+        real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
+        real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
+        samples = [sample_model.sample_case(case_log) for _ in range(n)]
+        case_payload = None
+        if return_case_log:
+            case_payload = (
+                case_name,
+                case_log.copy(deep=True),
+                real_start_time_ts,
+                real_end_time_ts
+            )
+        return case_name, samples, real_start_time_ts, real_end_time_ts, case_payload
+
+    @staticmethod
     def get_case_name_case_data(event_log, case_name):
         return (case_name, ConductEvaluation.get_case_data_static(event_log, case_name))
 
-    def sample_cases(self, plot_cases=False, multiprocessing=True):
+    def sample_cases(self, plot_cases=False, multiprocessing=True, store_case_data=True):
         cases = self.event_log['case:concept:name'].unique()
         results = dict()
 
         if multiprocessing:
-            #prepare case data
             grouped = self.event_log.groupby('case:concept:name')
-
+            case_names = []
+            real_end_times = []
+            sample_results = []
             case_data = {}
-            for case_name, case_log in tqdm(grouped, miniters=50):
-                real_start_time_ts = ConductEvaluation._get_real_start_time(case_log)
-                real_end_time_ts = ConductEvaluation._get_real_end_time(case_log)
-                case_data[case_name] = (case_name, case_log, real_start_time_ts, real_end_time_ts)
-                    
+
+            def _case_iterator():
+                for case_name, case_log in grouped:
+                    yield (case_name, case_log)
+
             with Pool(processes=self.n_processes) as pool:
-                # Use `imap` to track progress with tqdm
-                func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
-                sample_results = list(tqdm(
-                    pool.imap(func, [c[1] for c in case_data.values()], self.batch_size),
+                func = partial(
+                    ConductEvaluation._sample_case_with_metadata,
+                    sample_model=self.sample_model,
+                    n=self.n,
+                    return_case_log=store_case_data
+                )
+                for case_name, samples, real_start_ts, real_end_ts, case_payload in tqdm(
+                    pool.imap(func, _case_iterator(), self.batch_size),
                     total=len(cases),
                     miniters=50
-                ))
+                ):
+                    case_names.append(case_name)
+                    real_end_times.append(real_end_ts)
+                    sample_results.append(samples)
+                    if store_case_data:
+                        case_data[case_name] = case_payload
+                    else:
+                        case_data[case_name] = (case_name, None, real_start_ts, real_end_ts)
 
+            kde_inputs = list(zip(sample_results, real_end_times))
             with Pool(processes=self.n_processes) as pool:
-                #func = lambda i, c : self.__get_kde_from_samples(sample_results[i], case_data[c][3])
                 rr = list(tqdm(
-                    pool.imap(ConductEvaluation._get_kde_from_samples_args, [(sample_results[i], case_data[c][3]) for i, c in enumerate(case_data)], self.batch_size),
-                    total=len(case_data),
+                    pool.imap(ConductEvaluation._get_kde_from_samples_args, kde_inputs, self.batch_size),
+                    total=len(kde_inputs),
                     miniters=50
                 ))
-                return_results = dict([(c, rr[i]) for i, c in enumerate(case_data)])
-                #return_results = dict([(c, self._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)])
+                return_results = dict([(case_names[i], rr[i]) for i in range(len(case_names))])
+            case_data_return = case_data
         else:
             case_data = dict()
             sample_results = []
             return_results = dict()
             func = partial(ConductEvaluation.sample_case_static, sample_model=self.sample_model, n=self.n)
             for c in tqdm(cases):
-                case_data[c] = self.get_case_data(c)
-                r = func(case_data[c][1])
+                case_name, case_log, real_start_ts, real_end_ts = self.get_case_data(c)
+                if store_case_data:
+                    case_data[c] = (case_name, case_log, real_start_ts, real_end_ts)
+                else:
+                    case_data[c] = (case_name, None, real_start_ts, real_end_ts)
+                r = func(case_log)
                 sample_results.append(r)
-                kde = ConductEvaluation._get_kde_from_samples(r, case_data[c][3])
-                kde2 = gaussian_kde(r).pdf(case_data[c][3])[0]
+                kde = ConductEvaluation._get_kde_from_samples(r, real_end_ts)
+                kde2 = gaussian_kde(r).pdf(real_end_ts)[0]
                 if plot_cases:
                     print(c, kde, kde2, kde.ln(), numpy.log(kde2))
-                    self._plot_case(r, case_data[c][2], case_data[c][3])
+                    self._plot_case(r, real_start_ts, real_end_ts)
                 return_results[c] = kde
             #return_results = dict([(c, ConductEvaluation._get_kde_from_samples(sample_results[i], case_data[c][3])) for i, c in enumerate(case_data)]) 
 
-        return return_results, sample_results, case_data
+            case_data_return = case_data
+
+        return return_results, sample_results, case_data_return
