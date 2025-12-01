@@ -313,16 +313,53 @@ class PrefixDurationPredictor:
         *,
         case_id: Optional[str] = None,
     ) -> tuple[tuple[tuple[torch.Tensor, ...], tuple[torch.Tensor, ...], tuple[str, ...]], pd.DataFrame]:
-        prefix_df = self._coerce_prefix_dataframe(prefix_events)
+        if isinstance(prefix_events, pd.DataFrame):
+            prefix_df = prefix_events
+        else:
+            prefix_df = self._coerce_prefix_dataframe(prefix_events)
 
         if self.case_name_col not in prefix_df.columns:
             inferred_case_id = case_id or "inference_case"
-            prefix_df[self.case_name_col] = inferred_case_id
+            prefix_df = prefix_df.assign(**{self.case_name_col: inferred_case_id})
         elif case_id is not None:
-            prefix_df[self.case_name_col] = case_id
+            prefix_df = prefix_df.assign(**{self.case_name_col: case_id})
 
-        prefix_df = prefix_df.sort_values(self.timestamp_col).reset_index(drop=True)
-        self._ensure_required_columns(prefix_df)
+        missing_cols = [col for col in self.required_columns if col not in prefix_df.columns]
+        if missing_cols:
+            raise ValueError(
+                "Prefix data missing required column(s): " + ", ".join(missing_cols)
+            )
+
+        timestamp_series = prefix_df[self.timestamp_col]
+        if not timestamp_series.is_monotonic_increasing:
+            prefix_df = prefix_df.sort_values(
+                self.timestamp_col, kind="mergesort", ignore_index=True
+            )
+        elif not (
+            isinstance(prefix_df.index, pd.RangeIndex)
+            and prefix_df.index.start == 0
+            and prefix_df.index.step == 1
+        ):
+            prefix_df = prefix_df.reset_index(drop=True)
+
+        cat_updates: dict[str, pd.Series] = {}
+        for col in self.encoder_decoder.categorical_columns:
+            series = prefix_df[col]
+            cat_updates[col] = series.apply(
+                lambda x: x if pd.isna(x) else str(x)
+            ).astype(object)
+
+        num_updates: dict[str, pd.Series] = {}
+        for col in (
+            self.encoder_decoder.continuous_columns
+            + self.encoder_decoder.continuous_positive_columns
+        ):
+            num_updates[col] = pd.to_numeric(prefix_df[col], errors="coerce").astype("float32")
+
+        if cat_updates:
+            prefix_df = prefix_df.assign(**cat_updates)
+        if num_updates:
+            prefix_df = prefix_df.assign(**num_updates)
 
         encoded_case, _ = self.encoder_decoder.encode_df(prefix_df)
         case_cat_tensors, case_num_tensors, case_ids = encoded_case
