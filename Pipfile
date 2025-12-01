@@ -22,6 +22,7 @@ line-profiler = "*"
 numpy = "==2.2.*"
 torch = "*"
 tensorboard = "*"
+pyinstrument = "*"
 
 [dev-packages]
 
