@@ -51,6 +51,7 @@ class SampleOutcomes_LSTM(SampleOutcomes_Normal):
             case_log_sim.at[row_idx, 'day_in_week'] = day_of_week
 
             prefix_df = case_log_sim.iloc[:row_idx + 1]
+            #prefix_df = case_log_sim[:row_idx + 1]
             finish_time = self.sample_duration(prefix_df)
             current_time += finish_time
 
