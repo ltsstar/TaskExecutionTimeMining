@@ -213,23 +213,6 @@ class PrefixDurationPredictor:
             columns.add(col)
         return tuple(columns)
 
-    def _coerce_prefix_dataframe(
-        self, prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame
-    ) -> pd.DataFrame:
-        """Return a defensive copy of the incoming prefix as a DataFrame."""
-        if isinstance(prefix_events, pd.DataFrame):
-            # Work on a shallow copy so we can safely mutate columns without
-            # touching the caller's frame.
-            return prefix_events.copy(deep=True)
-
-        if isinstance(prefix_events, Sequence):
-            if not prefix_events:
-                raise ValueError("prefix_events must contain at least one event dictionary")
-            return pd.DataFrame(prefix_events)
-
-        raise TypeError(
-            "prefix_events must be either a pandas DataFrame or a sequence of mapping objects"
-        )
 
     def predict(
         self,
@@ -250,79 +233,42 @@ class PrefixDurationPredictor:
         pred_std_seconds = math.sqrt(math.exp(pred_logvar_norm)) * self.duration_scale
 
         return pred_mean_seconds, pred_std_seconds
-        '''
-        true_duration = self._extract_true_duration(prefix_df)
 
-        return Prediction(
-            case_id=str(prefix_df[self.case_name_col].iloc[-1]),
-            prefix_length=len(prefix_df),
-            predicted_mean_seconds=pred_mean_seconds,
-            predicted_std_seconds=pred_std_seconds,
-            predicted_mean_minutes=pred_mean_seconds / 60.0,
-            predicted_std_minutes=pred_std_seconds / 60.0,
-            true_duration_seconds=true_duration,
-            true_duration_minutes=(true_duration / 60.0) if true_duration is not None else None,
-        )
-        '''
-
-    def predict_all_prefixes(
-        self,
-        prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame,
-        *,
-        case_id: Optional[str] = None,
-    ) -> list[Prediction]:
-        encoded_sample, prefix_df = self._encode_prefix(prefix_events, case_id=case_id)
-        cats_full, nums_full, _ = encoded_sample
-        predictions: list[Prediction] = []
-
-        for prefix_len in range(1, cats_full[0].shape[0] + 1):
-            cats_prefix = [tensor[:prefix_len] for tensor in cats_full]
-            nums_prefix = [tensor[:prefix_len] for tensor in nums_full]
-            batched_cats = [tensor.unsqueeze(0) for tensor in cats_prefix]
-            batched_nums = [tensor.unsqueeze(0) for tensor in nums_prefix]
-            selected_cats = [batched_cats[idx] for idx in self.selected_cat_ids]
-            selected_nums = [batched_nums[idx] for idx in self.selected_num_ids]
-
-            with torch.no_grad():
-                pred_mean_norm, pred_logvar_norm = self.model({"cats": selected_cats, "nums": selected_nums})
-
-            pred_mean_norm = float(pred_mean_norm.squeeze().item())
-            pred_logvar_norm = float(pred_logvar_norm.squeeze().item())
-            pred_mean_seconds = pred_mean_norm * self.duration_scale + self.duration_mean
-            pred_std_seconds = math.sqrt(math.exp(pred_logvar_norm)) * self.duration_scale
-
-            predictions.append(
-                Prediction(
-                    case_id=str(prefix_df[self.case_name_col].iloc[-1]),
-                    prefix_length=prefix_len,
-                    predicted_mean_seconds=pred_mean_seconds,
-                    predicted_std_seconds=pred_std_seconds,
-                    predicted_mean_minutes=pred_mean_seconds / 60.0,
-                    predicted_std_minutes=pred_std_seconds / 60.0,
-                    true_duration_seconds=self._extract_true_duration(prefix_df) if prefix_len == len(prefix_df) else None,
-                    true_duration_minutes=(
-                        self._extract_true_duration(prefix_df) / 60.0 if prefix_len == len(prefix_df) and self._extract_true_duration(prefix_df) is not None else None
-                    ),
-                )
-            )
-        return predictions
 
     def _encode_prefix(
         self,
-        prefix_events: Sequence[Mapping[str, Any]] | pd.DataFrame,
+        prefix_events: pd.DataFrame,
         *,
         case_id: Optional[str] = None,
     ) -> tuple[tuple[tuple[torch.Tensor, ...], tuple[torch.Tensor, ...], tuple[str, ...]], pd.DataFrame]:
-        prefix_df = self._coerce_prefix_dataframe(prefix_events)
+        prefix_df = prefix_events[list(self.required_columns)].copy()
 
-        if self.case_name_col not in prefix_df.columns:
-            inferred_case_id = case_id or "inference_case"
-            prefix_df[self.case_name_col] = inferred_case_id
-        elif case_id is not None:
-            prefix_df[self.case_name_col] = case_id
+        missing_cols = [col for col in self.required_columns if col not in prefix_df.columns]
+        if missing_cols:
+            raise ValueError(
+                "Prefix data missing required column(s): " + ", ".join(missing_cols)
+            )
 
-        prefix_df = prefix_df.sort_values(self.timestamp_col).reset_index(drop=True)
-        self._ensure_required_columns(prefix_df)
+        timestamp_series = prefix_df[self.timestamp_col]
+        if not timestamp_series.is_monotonic_increasing:
+            prefix_df = prefix_df.sort_values(
+                self.timestamp_col, kind="mergesort", ignore_index=True
+            )
+        elif not (
+            isinstance(prefix_df.index, pd.RangeIndex)
+            and prefix_df.index.start == 0
+            and prefix_df.index.step == 1
+        ):
+            prefix_df = prefix_df.reset_index(drop=True)
+
+        for col in self.encoder_decoder.categorical_columns:
+            prefix_df[col] = prefix_df[col].apply(lambda x: x if pd.isna(x) else str(x)).astype(object)
+
+        for col in (
+            self.encoder_decoder.continuous_columns
+            + self.encoder_decoder.continuous_positive_columns
+        ):
+            prefix_df[col] = pd.to_numeric(prefix_df[col], errors="coerce").astype("float32")
 
         encoded_case, _ = self.encoder_decoder.encode_df(prefix_df)
         case_cat_tensors, case_num_tensors, case_ids = encoded_case
